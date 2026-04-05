@@ -101,8 +101,8 @@ Returns (start . end) or nil."
 ;; Stage 3 & 6: Rendering and Layout Engine
 
 (defun org-mindmap-calculate-widths (node)
-  "Measure text width for NODE."
-  (length (org-mindmap-node-text node)))
+  "Measure text display width for NODE."
+  (string-width (org-mindmap-node-text node)))
 
 (defun org-mindmap--move-to (row col)
   "Navigate to ROW and COL within current buffer, padding spaces if needed."
@@ -130,31 +130,47 @@ Returns (start . end) or nil."
 (defun org-mindmap--node-occupancy (n spacing)
   "Return (start-col end-col) for node N."
   (let* ((col (org-mindmap-node-col n))
-         (len (length (org-mindmap-node-text n)))
+         (len (string-width (org-mindmap-node-text n)))
          (parent (org-mindmap-node-parent n))
          (start-col (if parent
                         (+ (org-mindmap-node-col parent)
-                           (length (org-mindmap-node-text parent))
+                           (string-width (org-mindmap-node-text parent))
                            1)
                       0))
          (end-col (+ col len spacing)))
     (list start-col end-col)))
 
+(defun org-mindmap--get-occupied (nodes spacing)
+  "Return a list of (row start-col end-col) for all NODES and their vertical connectors."
+  (let ((occ nil))
+    (dolist (n nodes)
+      ;; Add the node itself (including its horizontal connector from parent)
+      (let ((no (org-mindmap--node-occupancy n spacing)))
+        (push (list (org-mindmap-node-row n) (car no) (cadr no)) occ))
+      ;; Add the vertical connector for its children
+      (let ((children (org-mindmap-node-children n)))
+        (when children
+          (let* ((conn-c (+ (org-mindmap-node-col n) (string-width (org-mindmap-node-text n)) 1))
+                 (first-r (org-mindmap-node-row (car children)))
+                 (last-r (org-mindmap-node-row (car (last children)))))
+            (cl-loop for r from first-r to last-r do
+                     (push (list r conn-c (1+ conn-c)) occ))))))
+    occ))
+
+
 (defun org-mindmap--check-overlap-subtree (nodes delta occupied spacing)
   "Check if shifting NODES by DELTA overlaps with OCCUPIED map."
-  (cl-loop for n in nodes
-           thereis
-           (let* ((r (+ (org-mindmap-node-row n) delta))
-                  (occ (org-mindmap--node-occupancy n spacing))
-                  (start-col (car occ))
-                  (end-col (cadr occ)))
-             (cl-loop for (occ-r occ-s occ-e) in occupied
-                      thereis (and (= r occ-r)
-                                   (not (or (<= end-col occ-s) (>= start-col occ-e))))))))
+  (let ((nodes-occ (org-mindmap--get-occupied nodes spacing)))
+    (cl-loop for (n-r n-s n-e) in nodes-occ
+             thereis
+             (let ((r (+ n-r delta)))
+               (cl-loop for (occ-r occ-s occ-e) in occupied
+                        thereis (and (= r occ-r)
+                                     (not (or (<= n-e occ-s) (>= n-s occ-e)))))))))
 
 (defun org-mindmap-build-subtree (node col conn-c layout spacing)
   "Recursively calculates rows and cols for NODE and its children."
-  (let* ((text-len (length (org-mindmap-node-text node)))
+  (let* ((text-len (string-width (org-mindmap-node-text node)))
          (child-col (+ col text-len 4))
          (child-conn-c (+ col text-len 1))
          (children (org-mindmap-node-children node)))
@@ -188,10 +204,9 @@ Returns (start . end) or nil."
                   (cl-incf delta)))
 
               (dolist (n c-nodes)
-                (setf (org-mindmap-node-row n) (+ (org-mindmap-node-row n) delta))
-                (let ((occ (org-mindmap--node-occupancy n spacing)))
-                  (push (list (org-mindmap-node-row n) (car occ) (cadr occ)) global-occupied)))
+                (setf (org-mindmap-node-row n) (+ (org-mindmap-node-row n) delta)))
 
+              (setq global-occupied (append (org-mindmap--get-occupied c-nodes spacing) global-occupied))
               (setq prev-child-row (org-mindmap-node-row child))
               (setq all-nodes (append all-nodes c-nodes)))))
 
@@ -236,10 +251,9 @@ Returns (start . end) or nil."
               (cl-incf delta)))
 
           (dolist (n r-nodes)
-            (setf (org-mindmap-node-row n) (+ (org-mindmap-node-row n) delta))
-            (let ((occ (org-mindmap--node-occupancy n spacing)))
-              (push (list (org-mindmap-node-row n) (car occ) (cadr occ)) global-occupied)))
+            (setf (org-mindmap-node-row n) (+ (org-mindmap-node-row n) delta)))
 
+          (setq global-occupied (append (org-mindmap--get-occupied r-nodes spacing) global-occupied))
           (setq prev-root-row (org-mindmap-node-row root))
           (setq all-nodes (append all-nodes r-nodes)))))
 
@@ -257,11 +271,11 @@ Returns (start . end) or nil."
          (text (org-mindmap-node-text node))
          (children (org-mindmap-node-children node)))
     (org-mindmap--move-to r c)
-    (let ((end (+ (point) (length text))))
+    (let ((end (+ (point) (string-width text))))
       (delete-region (point) (min end (line-end-position))))
     (insert (org-mindmap--propertize-text text))
     (when children
-      (let* ((conn-c (+ c (length text) 1))
+      (let* ((conn-c (+ c (string-width text) 1))
              (first-r (org-mindmap-node-row (car children)))
              (last-r (org-mindmap-node-row (car (last children))))
              (min-y (min first-r r))
@@ -289,10 +303,10 @@ Returns (start . end) or nil."
                            (t "│"))))
                      (if has-right
                          (let ((conn-str (concat sym "─ ")))
-                           (delete-region (point) (min (+ (point) (length conn-str)) (line-end-position)))
+                           (delete-region (point) (min (+ (point) (string-width conn-str)) (line-end-position)))
                            (insert (org-mindmap--propertize-connector conn-str)))
                        (progn
-                         (delete-region (point) (min (1+ (point)) (line-end-position)))
+                         (delete-region (point) (min (+ (point) (string-width sym)) (line-end-position)))
                          (insert (org-mindmap--propertize-connector sym)))))))
         (dolist (child children)
           (org-mindmap--draw-node child))))))
