@@ -2,7 +2,9 @@
 
 Editable mindmaps for org-mode. Just as simple as that.
 
-#+begin_mindmap :layout left
+Here's an example mindmap for a chapter from Zönke Ahrens — How to Take Smart Notes.
+#+begin_src 
+\#+begin_mindmap :layout left
 ┬─ Письмо ── помощник для ┬─ мышления
 │                         ├─ чтения
 │                         ├─ изучения
@@ -49,4 +51,5 @@ Editable mindmaps for org-mode. Just as simple as that.
                                                                 ├─ развивай идеи ── смотри, куда приведут
                                                                 ├─ следуй за интересом
                                                                 ╰─ выбирай путь, который ── обещает больше идей
-#+end_mindmap
+\#+end_mindmap
+#+end_src
