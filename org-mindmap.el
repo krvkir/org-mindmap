@@ -14,7 +14,9 @@
 
 ;;; Code:
 
+(add-to-list 'load-path "./")
 (require 'cl-lib)
+(require 'org-mindmap-parser)
 
 (defgroup org-mindmap nil
   "Editable mindmap visualization within org-mode."
@@ -68,10 +70,6 @@
 
 ;; Stage 1: Foundation — Data Structures and Region Detection
 
-(cl-defstruct (org-mindmap-node (:constructor org-mindmap-make-node))
-  "Data structure representing a single mindmap node."
-  id text children depth parent row col)
-
 (defun org-mindmap-get-region ()
   "Detect #+begin_mindmap and #+end_mindmap boundaries around point.
 Returns (start . end) or nil."
@@ -91,91 +89,7 @@ Returns (start . end) or nil."
   (not (null (org-mindmap-get-region))))
 
 ;; Stage 2: Basic Parsing — Visual to Tree
-
-(defun org-mindmap-parse-region (&optional start end)
-  "Parse mindmap within START to END into a tree structure.
-Returns a list of root nodes."
-  (unless (and start end)
-    (let ((region (org-mindmap-get-region)))
-      (when region
-        (setq start (car region)
-              end (cdr region)))))
-  (when (and start end)
-    (let ((orig-point (point))
-          (cursor-node-id nil)
-          (nodes nil)
-          (lines nil))
-      (save-excursion
-        (goto-char start)
-        (forward-line 1)
-        (let ((row 0))
-          (while (and (< (point) end)
-                      (not (looking-at-p "^[ 	]*#\\+end_mindmap")))
-            (let ((line-end (line-end-position))
-                  (line-str (buffer-substring-no-properties (line-beginning-position) (line-end-position))))
-              (push line-str lines)
-              (while (re-search-forward "\\(?:[┬├╰╭╮╯]─ \\|── \\)" line-end t)
-                (let* ((col (current-column))
-                       (text-start (point))
-                       (text-end (if (re-search-forward "\\(?:[┬├╰╭╮╯]─ \\|── \\)" line-end t)
-                                     (progn (goto-char (match-beginning 0)) (point))
-                                   line-end))
-                       (text (string-trim (buffer-substring-no-properties text-start text-end)))
-                       (node (org-mindmap-make-node :id (cl-gensym "node") :text text :row row :col col)))
-                  (when (and (>= orig-point text-start)
-                             (<= orig-point (+ text-start (length text))))
-                    (setq cursor-node-id (org-mindmap-node-id node)))
-                  (push node nodes)
-                  (goto-char text-end))))
-            (forward-line 1)
-            (cl-incf row)))
-        (setq lines (nreverse lines))
-        (setq nodes (nreverse nodes))
-
-        (let ((roots nil))
-          (dolist (c nodes)
-            (let* ((c-row (org-mindmap-node-row c))
-                   (c-col (org-mindmap-node-col c))
-                   (conn-c (- c-col 3))
-                   (p-col-end (- c-col 4))
-                   (best-p nil)
-                   (min-dist nil))
-              (dolist (p nodes)
-                (when (= (+ (org-mindmap-node-col p) (length (org-mindmap-node-text p))) p-col-end)
-                  (let* ((p-row (org-mindmap-node-row p))
-                         (r1 (min c-row p-row))
-                         (r2 (max c-row p-row))
-                         (valid t))
-                    (cl-loop for r from r1 to r2 do
-                             (let* ((line (nth r lines))
-                                    (char (if (< conn-c (length line))
-                                              (substring line conn-c (1+ conn-c))
-                                            " ")))
-                               (unless (or (= r p-row)
-                                           (member char '("│" "╭" "├" "╰" "┬" "─")))
-                                 (setq valid nil))))
-                    (when valid
-                      (let ((dist (abs (- c-row p-row))))
-                        (when (or (null best-p) (< dist min-dist))
-                          (setq best-p p)
-                          (setq min-dist dist)))))))
-              (if best-p
-                  (progn
-                    (setf (org-mindmap-node-parent c) best-p)
-                    (setf (org-mindmap-node-children best-p)
-                          (append (org-mindmap-node-children best-p) (list c))))
-                (push c roots))))
-          (put 'org-mindmap-parse 'cursor-node-id cursor-node-id)
-          (let ((calc-depth nil))
-            (setq calc-depth
-                  (lambda (node d)
-                    (setf (org-mindmap-node-depth node) d)
-                    (dolist (child (org-mindmap-node-children node))
-                      (funcall calc-depth child (1+ d)))))
-            (dolist (root roots)
-              (funcall calc-depth root 0)))
-          (setq roots (cl-sort roots #'< :key #'org-mindmap-node-row))
-          roots)))))
+;; now implemented in org-mindmap-parser package
 
 (defalias 'org-mindmap-parse 'org-mindmap-parse-region)
 (defalias 'org-mindmap-build-tree 'org-mindmap-parse-region)

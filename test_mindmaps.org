@@ -1,0 +1,76 @@
+
+* Test Case 1: Standard Tree
+#+begin_mindmap
+┬─ Root ┬─ Node A
+        ├─ Node B ┬─ Node C
+        │         ╰─ Node D
+        ╰─ Node E
+#+end_mindmap
+
+* Test Case 2: Multiple Roots
+#+begin_mindmap
+┬─ First Root ── Child 1
+╰─ Second Root ── Child 2
+#+end_mindmap
+
+* Test Case 3: Broken Connectors (Recovery Test)
+#+begin_mindmap
+┬─ Root  ─  Gap Child
+│
+╰─ Root 2    ── Spaced Child
+#+end_mindmap
+
+* Test Case 4: Ambiguous Text (Hyphens and Pipes)
+#+begin_mindmap
+┬─ Task-1 ── Sub-Task-A
+╰─ [DONE] | Pipe-Node ── Final
+#+end_mindmap
+
+* Test Case 5: Centered/Complex Branching
+#+begin_mindmap
+  ╭─ Up
+──┼─ Middle ── Right
+  ╰─ Down
+#+end_mindmap
+
+* Test Case 6: The "Glued" Problem (Original issue)
+#+begin_mindmap
+┬─ root ┬─ a ┬─ e
+        │    ├─ f
+        │    ╰─ g
+        ├─ b
+        ├─ c
+        ╰─ d
+#+end_mindmap
+
+* Test Case 7: Dead End / Incomplete
+#+begin_mindmap
+┬─ Root ┬─
+        ╰─ Child
+#+end_mindmap
+
+* Test Case 8: Vertical Shift Recovery
+#+begin_mindmap
+┬─ rot ┬─ abc ┬─ e
+        │    ├─ f
+        │    ╰─ g
+        ├─ b
+        ├─ c
+        ╰─ d
+#+end_mindmap
+
+* Test Case 9: Horizontal Shift Recovery
+#+begin_mindmap
+┬─ root ┬─ child1
+        │
+          ╰─ shifted child2
+#+end_mindmap
+
+* Test Case 10: Disconnected Subtrees (Large Gap)
+#+begin_mindmap
+┬─ root ┬─ child1
+        │
+        │
+        │
+        ╰─ child2
+#+end_mindmap
