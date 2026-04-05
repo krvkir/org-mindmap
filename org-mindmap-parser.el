@@ -170,30 +170,33 @@ Returns a list of nodes found along this path."
         (progn
           (org-mindmap--debug "trace-path: Visited at (%d, %d)" row col)
           nil)
-      (puthash (cons row col) t visited)
-      (let ((char (org-mindmap--grid-get lines row col)))
-        (org-mindmap--debug "trace-path: Visiting (%d, %d) char: %c" row col (or char ?\s))
+      (let* ((char (org-mindmap--grid-get lines row col))
+             (accepts (org-mindmap--accepts-entry-p lines row col moving-dir)))
+        (org-mindmap--debug "trace-path: Visiting (%d, %d) char: %c accepts: %s" row col (or char ?\s) accepts)
 
-        ;; 3. Whitespace handling triggers the recovery drift to jump visual gaps
-        (if (org-mindmap--is-whitespace char)
+        (if (not accepts)
+            ;; 3. Whitespace handling or invalid connector triggers recovery drift
             (let ((next-row (+ row (cdr moving-dir)))
                   (next-col (+ col (car moving-dir))))
-              (org-mindmap--debug "trace-path: Hit whitespace. Next immediate step (%d, %d)" next-row next-col)
-              (if (org-mindmap--accepts-entry-p lines next-row next-col moving-dir)
+              (org-mindmap--debug "trace-path: Does not accept entry.")
+              (if (and (org-mindmap--is-whitespace char)
+                       (org-mindmap--accepts-entry-p lines next-row next-col moving-dir))
                   (progn
-                    (org-mindmap--debug "trace-path: Next step accepts entry.")
+                    (org-mindmap--debug "trace-path: Gap crossing. Next step accepts entry.")
                     (org-mindmap--trace-path lines next-row next-col moving-dir visited))
-                (org-mindmap--debug "trace-path: Immediate step invalid. Attempting recovery...")
-                (let ((new-pos (org-mindmap--recover-connection lines row col moving-dir)))
-                  (if new-pos
+                (progn
+                  (org-mindmap--debug "trace-path: Immediate step invalid. Attempting recovery...")
+                  (let ((new-pos (org-mindmap--recover-connection lines row col moving-dir)))
+                    (if new-pos
+                        (progn
+                          (org-mindmap--debug "trace-path: Recovered to (%d, %d)" (car new-pos) (cdr new-pos))
+                          (org-mindmap--trace-path lines (car new-pos) (cdr new-pos) moving-dir visited))
                       (progn
-                        (org-mindmap--debug "trace-path: Recovered to (%d, %d)" (car new-pos) (cdr new-pos))
-                        (org-mindmap--trace-path lines (car new-pos) (cdr new-pos) moving-dir visited))
-                    (progn
-                      (org-mindmap--debug "trace-path: Recovery failed.")
-                      nil)))))
+                        (org-mindmap--debug "trace-path: Recovery failed.")
+                        nil))))))
 
-          ;; 4. Text and Connector Routing
+          ;; 4. Text and Connector Routing (Now we know it accepts entry)
+          (puthash (cons row col) t visited)
           (if (not (org-mindmap--is-connector char))
               (let* ((parsed (org-mindmap--parse-text-node lines row col moving-dir visited))
                      (node (car parsed))
@@ -207,30 +210,25 @@ Returns a list of nodes found along this path."
                 (list node))
 
             (let* ((entry-port (org-mindmap--invert-dir moving-dir))
-                   (char-ports (gethash char org-mindmap-ports)))
-              ;; 5. Validate that the connector actually connects to our incoming direction
-              (if (not (member entry-port char-ports))
-                  (progn
-                    (org-mindmap--debug "trace-path: Rejected entry port")
-                    nil)
-                (let ((remaining-ports (remove entry-port char-ports)))
-                  (cond
-                   ((= (length remaining-ports) 0)
-                    nil)
-                   ((= (length remaining-ports) 1)
-                    (let* ((next-dir (car remaining-ports))
-                           (next-col (+ col (car next-dir)))
-                           (next-row (+ row (cdr next-dir))))
-                      (org-mindmap--debug "trace-path: Single path. Next: (%d, %d)" next-row next-col)
-                      (org-mindmap--trace-path lines next-row next-col next-dir visited)))
-                   (t
-                    (org-mindmap--debug "trace-path: Branching %S" remaining-ports)
-                    (apply #'append
-                           (mapcar (lambda (branch-dir)
-                                     (let ((b-row (+ row (cdr branch-dir)))
-                                           (b-col (+ col (car branch-dir))))
-                                       (org-mindmap--trace-path lines b-row b-col branch-dir visited)))
-                                   remaining-ports)))))))))))))
+                   (char-ports (gethash char org-mindmap-ports))
+                   (remaining-ports (remove entry-port char-ports)))
+              (cond
+               ((= (length remaining-ports) 0)
+                nil)
+               ((= (length remaining-ports) 1)
+                (let* ((next-dir (car remaining-ports))
+                       (next-col (+ col (car next-dir)))
+                       (next-row (+ row (cdr next-dir))))
+                  (org-mindmap--debug "trace-path: Single path. Next: (%d, %d)" next-row next-col)
+                  (org-mindmap--trace-path lines next-row next-col next-dir visited)))
+               (t
+                (org-mindmap--debug "trace-path: Branching %S" remaining-ports)
+                (apply #'append
+                       (mapcar (lambda (branch-dir)
+                                 (let ((b-row (+ row (cdr branch-dir)))
+                                       (b-col (+ col (car branch-dir))))
+                                   (org-mindmap--trace-path lines b-row b-col branch-dir visited)))
+                               remaining-ports)))))))))))
 
 ;; --- 5. Main Parser ---
 (defun org-mindmap-parse-region (&optional start end)
