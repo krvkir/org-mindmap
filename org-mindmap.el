@@ -444,19 +444,45 @@ Connectors are drawn functionally in `org-mindmap--draw-node'."
            (spacing (string-to-number (or (plist-get props :spacing)
                                           (number-to-string org-mindmap-spacing))))
            (roots (org-mindmap-parse-region start end))
-           (target-id (get 'org-mindmap-parse 'cursor-node-id)))
+           (orig-row (save-excursion
+                       (let ((cur-line (line-number-at-pos (point)))
+                             (start-line (line-number-at-pos start)))
+                         (- cur-line start-line 1))))
+           (orig-col (current-column))
+           (target-node (org-mindmap--find-node-by-pos roots orig-row orig-col))
+           (target-id (when target-node (org-mindmap-node-id target-node))))
       (org-mindmap--update-buffer start end roots target-id layout spacing))))
 
 ;; Stage 4: Structural Editing — Insert and Delete
+
+(defun org-mindmap--find-node-by-pos (roots row col)
+  "Recursively find and return the node in ROOTS that spans ROW and COL."
+  (catch 'found
+    (let ((traverse nil))
+      (setq traverse
+            (lambda (node)
+              (let* ((r (org-mindmap-node-row node))
+                     (c (org-mindmap-node-col node))
+                     (len (length (org-mindmap-node-text node))))
+                (when (and (= row r) (>= col c) (<= col (+ c len)))
+                  (throw 'found node)))
+              (mapc traverse (org-mindmap-node-children node))))
+      (mapc traverse roots)
+      nil)))
 
 (defun org-mindmap-find-node-at-point ()
   "Locate the node corresponding to the cursor position."
   (let ((region (org-mindmap-get-region)))
     (when region
-      (let* ((roots (org-mindmap-parse-region (car region) (cdr region)))
-             (target-id (get 'org-mindmap-parse 'cursor-node-id)))
-        (when target-id
-          (org-mindmap--find-node-by-id roots target-id))))))
+      (let* ((start (car region))
+             (end (cdr region))
+             (roots (org-mindmap-parse-region start end))
+             (orig-row (save-excursion
+                         (let ((cur-line (line-number-at-pos (point)))
+                               (start-line (line-number-at-pos start)))
+                           (- cur-line start-line 1))))
+             (orig-col (current-column)))
+        (org-mindmap--find-node-by-pos roots orig-row orig-col)))))
 
 (defun org-mindmap--get-state ()
   "Parse current region, return (start end roots target-node)."
@@ -465,8 +491,12 @@ Connectors are drawn functionally in `org-mindmap--draw-node'."
     (let* ((start (car region))
            (end (cdr region))
            (roots (org-mindmap-parse-region start end))
-           (target-id (get 'org-mindmap-parse 'cursor-node-id))
-           (target-node (when target-id (org-mindmap--find-node-by-id roots target-id))))
+           (orig-row (save-excursion
+                       (let ((cur-line (line-number-at-pos (point)))
+                             (start-line (line-number-at-pos start)))
+                         (- cur-line start-line 1))))
+           (orig-col (current-column))
+           (target-node (org-mindmap--find-node-by-pos roots orig-row orig-col)))
       (list start end roots target-node))))
 
 (defun org-mindmap--insert-after (lst target new-item)
