@@ -251,32 +251,34 @@ Returns a list of nodes found along this path."
 
       (let* ((lines (vconcat (nreverse lines-list)))
              (height (length lines))
+             (max-width (apply #'max (cons 0 (mapcar #'length lines))))
              (visited (make-hash-table :test 'equal))
              (roots nil))
-        (cl-loop for row from 0 to (1- height) do
-                 (let* ((line (aref lines row))
-                        (width (length line)))
-                   (cl-loop for col from 0 to (1- width) do
-                            (unless (gethash (cons row col) visited)
-                              (let ((char (aref line col)))
-                                (unless (org-mindmap--is-whitespace char)
-                                  (cond
-                                   ((not (org-mindmap--is-connector char))
-                                    ;; Start of a disconnected text node
-                                    (let* ((parsed (org-mindmap--parse-text-node lines row col org-mindmap-dir-right visited))
-                                           (node (car parsed))
-                                           (next-col (cdr parsed)))
-                                      (when next-col
-                                        (let ((children (org-mindmap--trace-path lines row next-col org-mindmap-dir-right visited)))
-                                          (dolist (child children)
-                                            (setf (org-mindmap-node-parent child) node))
-                                          (setf (org-mindmap-node-children node) children)))
-                                      (push node roots)))
+        (cl-loop for col from 0 to (1- max-width) do
+                 (cl-loop for row from 0 to (1- height) do
+                          (let* ((line (aref lines row))
+                                 (width (length line)))
+                            (when (< col width)
+                              (unless (gethash (cons row col) visited)
+                                (let ((char (aref line col)))
+                                  (unless (org-mindmap--is-whitespace char)
+                                    (cond
+                                     ((not (org-mindmap--is-connector char))
+                                      ;; Start of a disconnected text node
+                                      (let* ((parsed (org-mindmap--parse-text-node lines row col org-mindmap-dir-right visited))
+                                             (node (car parsed))
+                                             (next-col (cdr parsed)))
+                                        (when next-col
+                                          (let ((children (org-mindmap--trace-path lines row next-col org-mindmap-dir-right visited)))
+                                            (dolist (child children)
+                                              (setf (org-mindmap-node-parent child) node))
+                                            (setf (org-mindmap-node-children node) children)))
+                                        (push node roots)))
 
-                                   ;; Valid start connectors that implies we entered from left
-                                   ((member char '(?┬ ?╭ ?╰ ?─ ?├))
-                                    (let ((nodes (org-mindmap--trace-path lines row col org-mindmap-dir-right visited)))
-                                      (setq roots (append roots nodes)))))))))))
+                                     ;; Valid start connectors that implies we entered from left
+                                     ((member char '(?┬ ?╭ ?╰ ?─ ?├))
+                                      (let ((nodes (org-mindmap--trace-path lines row col org-mindmap-dir-right visited)))
+                                        (setq roots (append roots nodes))))))))))))
 
         ;; Depth calculation
         (let ((calc-depth nil))

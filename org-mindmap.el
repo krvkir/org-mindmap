@@ -263,26 +263,39 @@ Returns (start . end) or nil."
     (when children
       (let* ((conn-c (+ c (length text) 1))
              (first-r (org-mindmap-node-row (car children)))
-             (last-r (org-mindmap-node-row (car (last children)))))
-        (cl-loop for vert-r from (min first-r r) to (max last-r r) do
-                 (org-mindmap--move-to vert-r conn-c)
-                 (unless (= vert-r r)
-                   (delete-region (point) (min (1+ (point)) (line-end-position)))
-                   (insert (org-mindmap--propertize-connector "│"))))
-        (cl-loop for child in children
-                 for i from 0
-                 for cr = (org-mindmap-node-row child) do
-                 (org-mindmap--move-to cr conn-c)
-                 (let* ((sym (cond ((= (length children) 1) "─")
-                                   ((and (= cr first-r) (= cr r)) "┬")
-                                   ((= cr first-r) "╭")
-                                   ((= cr last-r) "╰")
-                                   ((= cr r) "├")
-                                   (t "├")))
-                        (conn-str (concat sym "─ ")))
-                   (delete-region (point) (min (+ (point) (length conn-str)) (line-end-position)))
-                   (insert (org-mindmap--propertize-connector conn-str)))
-                 (org-mindmap--draw-node child))))))
+             (last-r (org-mindmap-node-row (car (last children))))
+             (min-y (min first-r r))
+             (max-y (max last-r r))
+             (child-rows (mapcar #'org-mindmap-node-row children)))
+        (cl-loop for y from min-y to max-y do
+                 (org-mindmap--move-to y conn-c)
+                 (let* ((has-above (> y min-y))
+                        (has-below (< y max-y))
+                        (has-left  (= y r))
+                        (has-right (memq y child-rows)))
+                   (let ((sym
+                          (cond
+                           ((and has-above has-below has-left has-right) "┼")
+                           ((and has-above has-below has-left (not has-right)) "┤")
+                           ((and has-above has-below (not has-left) has-right) "├")
+                           ((and has-above has-below (not has-left) (not has-right)) "│")
+                           ((and has-above (not has-below) has-left has-right) "┴")
+                           ((and has-above (not has-below) has-left (not has-right)) "╯")
+                           ((and has-above (not has-below) (not has-left) has-right) "╰")
+                           ((and (not has-above) has-below has-left has-right) "┬")
+                           ((and (not has-above) has-below has-left (not has-right)) "╮")
+                           ((and (not has-above) has-below (not has-left) has-right) "╭")
+                           ((and (not has-above) (not has-below) has-left has-right) "─")
+                           (t "│"))))
+                     (if has-right
+                         (let ((conn-str (concat sym "─ ")))
+                           (delete-region (point) (min (+ (point) (length conn-str)) (line-end-position)))
+                           (insert (org-mindmap--propertize-connector conn-str)))
+                       (progn
+                         (delete-region (point) (min (1+ (point)) (line-end-position)))
+                         (insert (org-mindmap--propertize-connector sym)))))))
+        (dolist (child children)
+          (org-mindmap--draw-node child))))))
 
 
 (defun org-mindmap-render-tree (roots &optional layout spacing)

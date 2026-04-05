@@ -74,3 +74,11 @@
         │
         ╰─ child2
 #+end_mindmap
+
+* Test Case 11: Centered Map
+#+begin_mindmap :layout centered
+                     ╭─ node d
+┬─ root ng ┬─ node b ┼─ node c
+╰─ disk c: ╰─ node a ╰─ node e ── node f
+#+end_mindmap
+
