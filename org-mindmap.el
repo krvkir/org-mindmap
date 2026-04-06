@@ -76,8 +76,11 @@
   :group 'org-mindmap)
 
 (defun org-mindmap--propertize-connector (str)
-  "Apply face and optional read-only properties to connector STR."
-  (let ((props (list 'face 'org-mindmap-face-connectors)))
+  "Apply face and optional read-only properties to connector STR.
+Ensures properties are not sticky to allow editing node text at the boundary."
+  (let ((props (list 'face 'org-mindmap-face-connectors
+                     'rear-nonsticky '(read-only face)
+                     'front-sticky '(read-only face))))
     (when org-mindmap-protect-connectors
       (setq props (plist-put props 'read-only t)))
     (apply #'propertize str props)))
@@ -490,10 +493,10 @@ Accepts LAYOUT and SPACING."
       nil)))
 
 (defun org-mindmap-insert-child (&optional text)
-  "Create new child node with optional TEXT under node at cursor position."
-  (interactive (list (read-string "Child text (default 'New Node'): " nil nil "New Node")))
-  (when (or (null text) (string-empty-p text))
-    (setq text "New Node"))
+  "Create new child node with optional TEXT under node at cursor position.
+If TEXT is nil or empty, creates an empty node for immediate editing."
+  (interactive (list (read-string "Child text: ")))
+  (setq text (or text ""))
   (cl-destructuring-bind (start end roots target-node) (org-mindmap--get-state)
     (unless target-node (error "No node at point"))
     (let ((new-node (org-mindmap-parser-make-node :id (cl-gensym "node") :text text :parent target-node)))
@@ -505,10 +508,10 @@ Accepts LAYOUT and SPACING."
         (org-mindmap--update-buffer start end roots (org-mindmap-parser-node-id new-node) layout spacing)))))
 
 (defun org-mindmap-insert-sibling (&optional text)
-  "Create new sibling node with optional TEXT after node at cursor position."
-  (interactive (list (read-string "Sibling text (default 'New Node'): " nil nil "New Node")))
-  (when (or (null text) (string-empty-p text))
-    (setq text "New Node"))
+  "Create new sibling node with optional TEXT after node at cursor position.
+If TEXT is nil or empty, creates an empty node for immediate editing."
+  (interactive (list (read-string "Sibling text: ")))
+  (setq text (or text ""))
   (cl-destructuring-bind (start end roots target-node) (org-mindmap--get-state)
     (unless target-node (error "No node at point"))
     (let* ((parent (org-mindmap-parser-node-parent target-node))
@@ -524,10 +527,10 @@ Accepts LAYOUT and SPACING."
         (org-mindmap--update-buffer start end roots (org-mindmap-parser-node-id new-node) layout spacing)))))
 
 (defun org-mindmap-insert-root (&optional text)
-  "Create new root node with optional TEXT at end of existing roots."
-  (interactive (list (read-string "Root text (default 'New Root'): " nil nil "New Root")))
-  (when (or (null text) (string-empty-p text))
-    (setq text "New Root"))
+  "Create new root node with optional TEXT at end of existing roots.
+If TEXT is nil or empty, creates an empty node for immediate editing."
+  (interactive (list (read-string "Root text: ")))
+  (setq text (or text ""))
   (cl-destructuring-bind (start end roots target-node) (org-mindmap--get-state)
     (unless target-node (error "No node at point"))
     (unless (null (org-mindmap-parser-node-parent target-node))
