@@ -10,10 +10,10 @@
             (lambda (node indent)
               (insert (format "%s- %s (row:%d, col:%d)\n"
                               (make-string indent ? )
-                              (org-mindmap-node-text node)
-                              (org-mindmap-node-row node)
-                              (org-mindmap-node-col node)))
-              (dolist (child (org-mindmap-node-children node))
+                              (org-mindmap-parser-node-text node)
+                              (org-mindmap-parser-node-row node)
+                              (org-mindmap-parser-node-col node)))
+              (dolist (child (org-mindmap-parser-node-children node))
                 (funcall print-node-fn child (+ indent 2)))))
       (dolist (root roots)
         (funcall print-node-fn root 4)))
@@ -26,7 +26,7 @@
     (with-current-buffer (find-file-noselect "test_mindmaps.org")
       (goto-char (point-min))
       (while (re-search-forward "^[ \t]*#\\+begin_mindmap" nil t)
-        (let* ((region (org-mindmap-get-region))
+        (let* ((region (org-mindmap-parser-get-region))
                (start (car region))
                (end (cdr region))
                (heading (save-excursion
@@ -40,7 +40,7 @@
 
           ;; Parse map
           (condition-case err
-              (let ((roots (org-mindmap-parse-region start end)))
+              (let ((roots (org-mindmap-parser-parse-region start end)))
                 (setq actual-output (format-nodes-as-string roots)))
             (error (setq actual-output (format "ERROR: %S\n" err))))
 

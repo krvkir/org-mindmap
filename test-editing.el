@@ -170,12 +170,12 @@
     (should (re-search-forward "R1C1C1"))
     (should (re-search-forward "R2"))
     ;; Verify tree structure via parsing
-    (let* ((region (org-mindmap-get-region))
-           (roots (org-mindmap-parse-region (car region) (cdr region))))
+    (let* ((region (org-mindmap-parser-get-region))
+           (roots (org-mindmap-parser-parse-region (car region) (cdr region))))
       (should (= (length roots) 2))
-      (should (string= (org-mindmap-node-text (car roots)) "R1"))
-      (should (= (length (org-mindmap-node-children (car roots))) 2))
-      (should (string= (org-mindmap-node-text (nth 1 (org-mindmap-node-children (car roots)))) "R1C2")))
+      (should (string= (org-mindmap-parser-node-text (car roots)) "R1"))
+      (should (= (length (org-mindmap-parser-node-children (car roots))) 2))
+      (should (string= (org-mindmap-parser-node-text (nth 1 (org-mindmap-parser-node-children (car roots)))) "R1C2")))
     ;; Convert back
     (org-mindmap-to-list)
     (goto-char (point-min))

@@ -5,7 +5,7 @@
 ;; Author: krvkir <krvkir@gmail.com>
 ;; Version: 0.1.0
 ;; Keywords: org, tools, outlines
-;; Package-Requires: ((emacs "26.1") (cl-lib "0.5") (org "9.1"))
+;; Package-Requires: ((emacs "26.1") (org "9.1"))
 ;; URL: https://github.com/krvkir/org-mindmap
 
 ;; This file is not part of GNU Emacs.
@@ -25,7 +25,7 @@
 
 
 ;;; Commentary:
-;; Provides an editable mindmap visualization system within ‘org-mode’ buffers.
+;; Provides an editable mindmap visualization system within org-mode buffers.
 ;; Implements core data structures, region detection, parsing,
 ;; rendering (left-aligned, compact, centered), alignment, structural editing,
 ;; layout switching, and configuration via custom variables and text properties.
@@ -37,7 +37,7 @@
 (require 'org-mindmap-parser)
 
 (defgroup org-mindmap nil
-  "Editable mindmap visualization within ‘org-mode’."
+  "Editable mindmap visualization within `org-mode'."
   :group 'org)
 
 (defcustom org-mindmap-spacing 1
@@ -104,12 +104,12 @@
 
 (defun org-mindmap--node-occupancy (n spacing)
   "Return (start-col end-col) for node N with SPACING."
-  (let* ((col (org-mindmap-node-col n))
-         (len (string-width (org-mindmap-node-text n)))
-         (parent (org-mindmap-node-parent n))
+  (let* ((col (org-mindmap-parser-node-col n))
+         (len (string-width (org-mindmap-parser-node-text n)))
+         (parent (org-mindmap-parser-node-parent n))
          (start-col (if parent
-                        (+ (org-mindmap-node-col parent)
-                           (string-width (org-mindmap-node-text parent))
+                        (+ (org-mindmap-parser-node-col parent)
+                           (string-width (org-mindmap-parser-node-text parent))
                            1)
                       0))
          (end-col (+ col len spacing)))
@@ -122,13 +122,13 @@ This also includes their vertical connectors and respects SPACING."
     (dolist (n nodes)
       ;; Add the node itself (including its horizontal connector from parent)
       (let ((no (org-mindmap--node-occupancy n spacing)))
-        (push (list (org-mindmap-node-row n) (car no) (cadr no)) occ))
+        (push (list (org-mindmap-parser-node-row n) (car no) (cadr no)) occ))
       ;; Add the vertical connector for its children
-      (let ((children (org-mindmap-node-children n)))
+      (let ((children (org-mindmap-parser-node-children n)))
         (when children
-          (let* ((conn-c (+ (org-mindmap-node-col n) (string-width (org-mindmap-node-text n)) 1))
-                 (first-r (org-mindmap-node-row (car children)))
-                 (last-r (org-mindmap-node-row (car (last children)))))
+          (let* ((conn-c (+ (org-mindmap-parser-node-col n) (string-width (org-mindmap-parser-node-text n)) 1))
+                 (first-r (org-mindmap-parser-node-row (car children)))
+                 (last-r (org-mindmap-parser-node-row (car (last children)))))
             (cl-loop for r from first-r to last-r do
                      (push (list r conn-c (1+ conn-c)) occ))))))
     occ))
@@ -146,15 +146,15 @@ This also includes their vertical connectors and respects SPACING."
 (defun org-mindmap-build-subtree (node col layout spacing)
   "Recursively calculates rows and cols for NODE and its children.
 Requires COL, LAYOUT, and SPACING."
-  (let* ((text-len (string-width (org-mindmap-node-text node)))
+  (let* ((text-len (string-width (org-mindmap-parser-node-text node)))
          (child-col (+ col text-len 4))
-         (children (org-mindmap-node-children node)))
+         (children (org-mindmap-parser-node-children node)))
 
-    (setf (org-mindmap-node-col node) col)
+    (setf (org-mindmap-parser-node-col node) col)
 
     (if (null children)
         (progn
-          (setf (org-mindmap-node-row node) 0)
+          (setf (org-mindmap-parser-node-row node) 0)
           (list 0 0 (list node)))
 
       (let ((global-occupied nil)
@@ -165,7 +165,7 @@ Requires COL, LAYOUT, and SPACING."
           (cl-destructuring-bind (c-min _ c-nodes)
               (org-mindmap-build-subtree child child-col layout spacing)
 
-            (let* ((c-root-row (org-mindmap-node-row child))
+            (let* ((c-root-row (org-mindmap-parser-node-row child))
                    (min-delta (if prev-child-row
                                   (+ prev-child-row 1 (- c-root-row))
                                 (- c-min)))
@@ -173,32 +173,32 @@ Requires COL, LAYOUT, and SPACING."
 
               (if (eq layout 'left)
                   (setq delta (if all-nodes
-                                  (+ (apply #'max (mapcar #'org-mindmap-node-row all-nodes)) 1 (- c-min))
+                                  (+ (apply #'max (mapcar #'org-mindmap-parser-node-row all-nodes)) 1 (- c-min))
                                 (- c-min)))
                 (while (org-mindmap--check-overlap-subtree c-nodes delta global-occupied spacing)
                   (cl-incf delta)))
 
               (dolist (n c-nodes)
-                (setf (org-mindmap-node-row n) (+ (org-mindmap-node-row n) delta)))
+                (setf (org-mindmap-parser-node-row n) (+ (org-mindmap-parser-node-row n) delta)))
 
               (setq global-occupied (append (org-mindmap--get-occupied c-nodes spacing) global-occupied))
-              (setq prev-child-row (org-mindmap-node-row child))
+              (setq prev-child-row (org-mindmap-parser-node-row child))
               (setq all-nodes (append all-nodes c-nodes)))))
 
-        (let ((first-child-row (org-mindmap-node-row (car children)))
-              (last-child-row (org-mindmap-node-row (car (last children)))))
-          (setf (org-mindmap-node-row node)
+        (let ((first-child-row (org-mindmap-parser-node-row (car children)))
+              (last-child-row (org-mindmap-parser-node-row (car (last children)))))
+          (setf (org-mindmap-parser-node-row node)
                 (if (eq layout 'centered)
                     (/ (+ first-child-row last-child-row) 2)
                   first-child-row)))
 
         (push node all-nodes)
 
-        (let ((min-r (apply #'min (mapcar #'org-mindmap-node-row all-nodes)))
-              (max-r (apply #'max (mapcar #'org-mindmap-node-row all-nodes))))
+        (let ((min-r (apply #'min (mapcar #'org-mindmap-parser-node-row all-nodes)))
+              (max-r (apply #'max (mapcar #'org-mindmap-parser-node-row all-nodes))))
           (unless (= min-r 0)
             (dolist (n all-nodes)
-              (setf (org-mindmap-node-row n) (- (org-mindmap-node-row n) min-r)))
+              (setf (org-mindmap-parser-node-row n) (- (org-mindmap-parser-node-row n) min-r)))
             (setq max-r (- max-r min-r)))
           (list 0 max-r all-nodes))))))
 
@@ -212,7 +212,7 @@ Requires COL, LAYOUT, and SPACING."
       (cl-destructuring-bind (r-min _ r-nodes)
           (org-mindmap-build-subtree root 3 layout spacing)
 
-        (let* ((r-root-row (org-mindmap-node-row root))
+        (let* ((r-root-row (org-mindmap-parser-node-row root))
                (min-delta (if prev-root-row
                               (+ prev-root-row 1 (- r-root-row))
                             (- r-min)))
@@ -220,42 +220,42 @@ Requires COL, LAYOUT, and SPACING."
 
           (if (eq layout 'left)
               (setq delta (if all-nodes
-                              (+ (apply #'max (mapcar #'org-mindmap-node-row all-nodes)) 1 (- r-min))
+                              (+ (apply #'max (mapcar #'org-mindmap-parser-node-row all-nodes)) 1 (- r-min))
                             (- r-min)))
             (while (org-mindmap--check-overlap-subtree r-nodes delta global-occupied spacing)
               (cl-incf delta)))
 
           (dolist (n r-nodes)
-            (setf (org-mindmap-node-row n) (+ (org-mindmap-node-row n) delta)))
+            (setf (org-mindmap-parser-node-row n) (+ (org-mindmap-parser-node-row n) delta)))
 
           (setq global-occupied (append (org-mindmap--get-occupied r-nodes spacing) global-occupied))
-          (setq prev-root-row (org-mindmap-node-row root))
+          (setq prev-root-row (org-mindmap-parser-node-row root))
           (setq all-nodes (append all-nodes r-nodes)))))
 
     (when all-nodes
-      (let ((min-r (apply #'min (mapcar #'org-mindmap-node-row all-nodes))))
+      (let ((min-r (apply #'min (mapcar #'org-mindmap-parser-node-row all-nodes))))
         (unless (= min-r 0)
           (dolist (n all-nodes)
-            (setf (org-mindmap-node-row n) (- (org-mindmap-node-row n) min-r))))))
+            (setf (org-mindmap-parser-node-row n) (- (org-mindmap-parser-node-row n) min-r))))))
     all-nodes))
 
 (defun org-mindmap--draw-node (node)
   "Write NODE text and box-drawing connectors onto the buffer canvas."
-  (let* ((r (org-mindmap-node-row node))
-         (c (org-mindmap-node-col node))
-         (text (org-mindmap-node-text node))
-         (children (org-mindmap-node-children node)))
+  (let* ((r (org-mindmap-parser-node-row node))
+         (c (org-mindmap-parser-node-col node))
+         (text (org-mindmap-parser-node-text node))
+         (children (org-mindmap-parser-node-children node)))
     (org-mindmap--move-to r c)
     (let ((end (+ (point) (string-width text))))
       (delete-region (point) (min end (line-end-position))))
     (insert (org-mindmap--propertize-text text))
     (when children
       (let* ((conn-c (+ c (string-width text) 1))
-             (first-r (org-mindmap-node-row (car children)))
-             (last-r (org-mindmap-node-row (car (last children))))
+             (first-r (org-mindmap-parser-node-row (car children)))
+             (last-r (org-mindmap-parser-node-row (car (last children))))
              (min-y (min first-r r))
              (max-y (max last-r r))
-             (child-rows (mapcar #'org-mindmap-node-row children)))
+             (child-rows (mapcar #'org-mindmap-parser-node-row children)))
         (cl-loop for y from min-y to max-y do
                  (org-mindmap--move-to y conn-c)
                  (let* ((has-above (> y min-y))
@@ -296,13 +296,13 @@ Requires COL, LAYOUT, and SPACING."
     (with-temp-buffer
       (setq indent-tabs-mode nil)
       (let ((inhibit-read-only t)
-            (first-r (org-mindmap-node-row (car roots)))
-            (last-r (org-mindmap-node-row (car (last roots)))))
+            (first-r (org-mindmap-parser-node-row (car roots)))
+            (last-r (org-mindmap-parser-node-row (car (last roots)))))
         ;; draw root vertical lines
         (when (> last-r first-r)
           (cl-loop for vert-r from first-r to last-r do
                    (org-mindmap--move-to vert-r 0)
-                   (let* ((is-root (cl-find vert-r roots :key #'org-mindmap-node-row))
+                   (let* ((is-root (cl-find vert-r roots :key #'org-mindmap-parser-node-row))
                           (sym (cond ((and is-root (= vert-r first-r)) "┬")
                                      ((and is-root (= vert-r last-r)) "╰")
                                      (is-root "├")
@@ -345,7 +345,7 @@ Requires COL, LAYOUT, and SPACING."
 (defun org-mindmap-switch-layout ()
   "Cycle layout modes for the current mindmap region."
   (interactive)
-  (let* ((region (org-mindmap-get-region))
+  (let* ((region (org-mindmap-parser-get-region))
          (start (car region))
          (props (org-mindmap--parse-properties start))
          (current (intern (or (plist-get props :layout)
@@ -372,9 +372,9 @@ Requires COL, LAYOUT, and SPACING."
     (let ((traverse nil))
       (setq traverse
             (lambda (node)
-              (when (eq (org-mindmap-node-id node) id)
+              (when (eq (org-mindmap-parser-node-id node) id)
                 (throw 'found node))
-              (mapc traverse (org-mindmap-node-children node))))
+              (mapc traverse (org-mindmap-parser-node-children node))))
       (mapc traverse roots)
       nil)))
 
@@ -392,15 +392,15 @@ Accepts LAYOUT and SPACING."
           (if target-node
               (progn
                 (goto-char start)
-                (forward-line (1+ (org-mindmap-node-row target-node)))
-                (move-to-column (org-mindmap-node-col target-node)))
+                (forward-line (1+ (org-mindmap-parser-node-row target-node)))
+                (move-to-column (org-mindmap-parser-node-col target-node)))
             (goto-char start)))
       (goto-char start))))
 
 (defun org-mindmap-align ()
   "Align and format the current mindmap region based on block properties."
   (interactive)
-  (let ((region (org-mindmap-get-region)))
+  (let ((region (org-mindmap-parser-get-region)))
     (unless region
       (error "Not inside an org-mindmap region"))
     (let* ((start (car region))
@@ -410,14 +410,14 @@ Accepts LAYOUT and SPACING."
                                (symbol-name org-mindmap-default-layout))))
            (spacing (string-to-number (or (plist-get props :spacing)
                                           (number-to-string org-mindmap-spacing))))
-           (roots (org-mindmap-parse-region start end))
+           (roots (org-mindmap-parser-parse-region start end))
            (orig-row (save-excursion
                        (let ((cur-line (line-number-at-pos (point)))
                              (start-line (line-number-at-pos start)))
                          (- cur-line start-line 1))))
            (orig-col (current-column))
            (target-node (org-mindmap--find-node-by-pos roots orig-row orig-col))
-           (target-id (when target-node (org-mindmap-node-id target-node))))
+           (target-id (when target-node (org-mindmap-parser-node-id target-node))))
       (org-mindmap--update-buffer start end roots target-id layout spacing))))
 
 ;;
@@ -430,22 +430,22 @@ Accepts LAYOUT and SPACING."
     (let ((traverse nil))
       (setq traverse
             (lambda (node)
-              (let* ((r (org-mindmap-node-row node))
-                     (c (org-mindmap-node-col node))
-                     (len (length (org-mindmap-node-text node))))
+              (let* ((r (org-mindmap-parser-node-row node))
+                     (c (org-mindmap-parser-node-col node))
+                     (len (length (org-mindmap-parser-node-text node))))
                 (when (and (= row r) (>= col c) (<= col (+ c len)))
                   (throw 'found node)))
-              (mapc traverse (org-mindmap-node-children node))))
+              (mapc traverse (org-mindmap-parser-node-children node))))
       (mapc traverse roots)
       nil)))
 
 (defun org-mindmap-find-node-at-point ()
   "Locate the node corresponding to the cursor position."
-  (let ((region (org-mindmap-get-region)))
+  (let ((region (org-mindmap-parser-get-region)))
     (when region
       (let* ((start (car region))
              (end (cdr region))
-             (roots (org-mindmap-parse-region start end))
+             (roots (org-mindmap-parser-parse-region start end))
              (orig-row (save-excursion
                          (let ((cur-line (line-number-at-pos (point)))
                                (start-line (line-number-at-pos start)))
@@ -455,11 +455,11 @@ Accepts LAYOUT and SPACING."
 
 (defun org-mindmap--get-state ()
   "Parse current region, return (start end roots target-node)."
-  (let ((region (org-mindmap-get-region)))
+  (let ((region (org-mindmap-parser-get-region)))
     (unless region (error "Not inside a mindmap region"))
     (let* ((start (car region))
            (end (cdr region))
-           (roots (org-mindmap-parse-region start end))
+           (roots (org-mindmap-parser-parse-region start end))
            (orig-row (save-excursion
                        (let ((cur-line (line-number-at-pos (point)))
                              (start-line (line-number-at-pos start)))
@@ -482,11 +482,11 @@ Accepts LAYOUT and SPACING."
   (let ((pos (cl-position target lst)))
     (if pos
         (if (< (1+ pos) (length lst))
-            (org-mindmap-node-id (nth (1+ pos) lst)) ; next sibling
+            (org-mindmap-parser-node-id (nth (1+ pos) lst)) ; next sibling
           (if (> pos 0)
-              (org-mindmap-node-id (nth (1- pos) lst)) ; previous sibling
+              (org-mindmap-parser-node-id (nth (1- pos) lst)) ; previous sibling
             (when fallback-parent
-              (org-mindmap-node-id fallback-parent))))
+              (org-mindmap-parser-node-id fallback-parent))))
       nil)))
 
 (defun org-mindmap-insert-child (&optional text)
@@ -496,13 +496,13 @@ Accepts LAYOUT and SPACING."
     (setq text "New Node"))
   (cl-destructuring-bind (start end roots target-node) (org-mindmap--get-state)
     (unless target-node (error "No node at point"))
-    (let ((new-node (org-mindmap-make-node :id (cl-gensym "node") :text text :parent target-node)))
-      (setf (org-mindmap-node-children target-node)
-            (append (org-mindmap-node-children target-node) (list new-node)))
+    (let ((new-node (org-mindmap-parser-make-node :id (cl-gensym "node") :text text :parent target-node)))
+      (setf (org-mindmap-parser-node-children target-node)
+            (append (org-mindmap-parser-node-children target-node) (list new-node)))
       (let* ((props (org-mindmap--parse-properties start))
              (layout (intern (or (plist-get props :layout) (symbol-name org-mindmap-default-layout))))
              (spacing (string-to-number (or (plist-get props :spacing) (number-to-string org-mindmap-spacing)))))
-        (org-mindmap--update-buffer start end roots (org-mindmap-node-id new-node) layout spacing)))))
+        (org-mindmap--update-buffer start end roots (org-mindmap-parser-node-id new-node) layout spacing)))))
 
 (defun org-mindmap-insert-sibling (&optional text)
   "Create new sibling node with optional TEXT after node at cursor position."
@@ -511,17 +511,17 @@ Accepts LAYOUT and SPACING."
     (setq text "New Node"))
   (cl-destructuring-bind (start end roots target-node) (org-mindmap--get-state)
     (unless target-node (error "No node at point"))
-    (let* ((parent (org-mindmap-node-parent target-node))
-           (new-node (org-mindmap-make-node :id (cl-gensym "node") :text text :parent parent)))
+    (let* ((parent (org-mindmap-parser-node-parent target-node))
+           (new-node (org-mindmap-parser-make-node :id (cl-gensym "node") :text text :parent parent)))
       (if parent
-          (let ((siblings (org-mindmap-node-children parent)))
-            (setf (org-mindmap-node-children parent)
+          (let ((siblings (org-mindmap-parser-node-children parent)))
+            (setf (org-mindmap-parser-node-children parent)
                   (org-mindmap--insert-after siblings target-node new-node)))
         (setq roots (org-mindmap--insert-after roots target-node new-node)))
       (let* ((props (org-mindmap--parse-properties start))
              (layout (intern (or (plist-get props :layout) (symbol-name org-mindmap-default-layout))))
              (spacing (string-to-number (or (plist-get props :spacing) (number-to-string org-mindmap-spacing)))))
-        (org-mindmap--update-buffer start end roots (org-mindmap-node-id new-node) layout spacing)))))
+        (org-mindmap--update-buffer start end roots (org-mindmap-parser-node-id new-node) layout spacing)))))
 
 (defun org-mindmap-insert-root (&optional text)
   "Create new root node with optional TEXT at end of existing roots."
@@ -530,30 +530,30 @@ Accepts LAYOUT and SPACING."
     (setq text "New Root"))
   (cl-destructuring-bind (start end roots target-node) (org-mindmap--get-state)
     (unless target-node (error "No node at point"))
-    (unless (null (org-mindmap-node-parent target-node))
+    (unless (null (org-mindmap-parser-node-parent target-node))
       (error "Cannot insert root from a child node"))
-    (let ((new-node (org-mindmap-make-node :id (cl-gensym "node") :text text)))
+    (let ((new-node (org-mindmap-parser-make-node :id (cl-gensym "node") :text text)))
       (setq roots (append roots (list new-node)))
       (let* ((props (org-mindmap--parse-properties start))
              (layout (intern (or (plist-get props :layout) (symbol-name org-mindmap-default-layout))))
              (spacing (string-to-number (or (plist-get props :spacing) (number-to-string org-mindmap-spacing)))))
-        (org-mindmap--update-buffer start end roots (org-mindmap-node-id new-node) layout spacing)))))
+        (org-mindmap--update-buffer start end roots (org-mindmap-parser-node-id new-node) layout spacing)))))
 
 (defun org-mindmap-delete-node ()
   "Remove node at cursor position and all descendants."
   (interactive)
   (cl-destructuring-bind (start end roots target-node) (org-mindmap--get-state)
     (unless target-node (error "No node at point"))
-    (when (and (org-mindmap-node-children target-node)
+    (when (and (org-mindmap-parser-node-children target-node)
                org-mindmap-confirm-delete
                (not (y-or-n-p "Node has children.  Delete anyway? ")))
       (user-error "Aborted"))
-    (let ((parent (org-mindmap-node-parent target-node))
+    (let ((parent (org-mindmap-parser-node-parent target-node))
           (next-focus-id nil))
       (if parent
-          (let ((siblings (org-mindmap-node-children parent)))
+          (let ((siblings (org-mindmap-parser-node-children parent)))
             (setq next-focus-id (org-mindmap--get-next-focus siblings target-node parent))
-            (setf (org-mindmap-node-children parent) (remq target-node siblings)))
+            (setf (org-mindmap-parser-node-children parent) (remq target-node siblings)))
         ;; Root node
         (if (= (length roots) 1)
             (error "Cannot delete the last root node")
@@ -583,7 +583,7 @@ Accepts LAYOUT and SPACING."
            (user-error "Cannot move up: already first sibling")))
     ('down (when (or (null pos) (= pos (1- (length siblings))))
              (user-error "Cannot move down: already last sibling")))
-    ('promote (when (null (org-mindmap-node-parent target-node))
+    ('promote (when (null (org-mindmap-parser-node-parent target-node))
                 (user-error "Cannot promote: already a root node")))
     ('demote (when (or (null pos) (= pos 0))
                (user-error "Cannot demote: requires a previous sibling")))))
@@ -593,36 +593,36 @@ Accepts LAYOUT and SPACING."
   (interactive)
   (cl-destructuring-bind (start end roots target-node) (org-mindmap--get-state)
     (unless target-node (error "No node at point"))
-    (let* ((parent (org-mindmap-node-parent target-node))
-           (siblings (if parent (org-mindmap-node-children parent) roots))
+    (let* ((parent (org-mindmap-parser-node-parent target-node))
+           (siblings (if parent (org-mindmap-parser-node-children parent) roots))
            (pos (cl-position target-node siblings)))
       (org-mindmap-validate-move 'up target-node siblings pos)
       (setq siblings (org-mindmap--list-swap siblings pos (1- pos)))
       (if parent
-          (setf (org-mindmap-node-children parent) siblings)
+          (setf (org-mindmap-parser-node-children parent) siblings)
         (setq roots siblings))
       (let* ((props (org-mindmap--parse-properties start))
              (layout (intern (or (plist-get props :layout) (symbol-name org-mindmap-default-layout))))
              (spacing (string-to-number (or (plist-get props :spacing) (number-to-string org-mindmap-spacing)))))
-        (org-mindmap--update-buffer start end roots (org-mindmap-node-id target-node) layout spacing)))))
+        (org-mindmap--update-buffer start end roots (org-mindmap-parser-node-id target-node) layout spacing)))))
 
 (defun org-mindmap-move-down ()
   "Swap node with next sibling."
   (interactive)
   (cl-destructuring-bind (start end roots target-node) (org-mindmap--get-state)
     (unless target-node (error "No node at point"))
-    (let* ((parent (org-mindmap-node-parent target-node))
-           (siblings (if parent (org-mindmap-node-children parent) roots))
+    (let* ((parent (org-mindmap-parser-node-parent target-node))
+           (siblings (if parent (org-mindmap-parser-node-children parent) roots))
            (pos (cl-position target-node siblings)))
       (org-mindmap-validate-move 'down target-node siblings pos)
       (setq siblings (org-mindmap--list-swap siblings pos (1+ pos)))
       (if parent
-          (setf (org-mindmap-node-children parent) siblings)
+          (setf (org-mindmap-parser-node-children parent) siblings)
         (setq roots siblings))
       (let* ((props (org-mindmap--parse-properties start))
              (layout (intern (or (plist-get props :layout) (symbol-name org-mindmap-default-layout))))
              (spacing (string-to-number (or (plist-get props :spacing) (number-to-string org-mindmap-spacing)))))
-        (org-mindmap--update-buffer start end roots (org-mindmap-node-id target-node) layout spacing)))))
+        (org-mindmap--update-buffer start end roots (org-mindmap-parser-node-id target-node) layout spacing)))))
 
 (defun org-mindmap-promote ()
   "Move node up one level (becomes sibling of parent)."
@@ -630,41 +630,41 @@ Accepts LAYOUT and SPACING."
   (cl-destructuring-bind (start end roots target-node) (org-mindmap--get-state)
     (unless target-node (error "No node at point"))
     (org-mindmap-validate-move 'promote target-node nil nil)
-    (let* ((parent (org-mindmap-node-parent target-node))
-           (grandparent (org-mindmap-node-parent parent)))
-      (setf (org-mindmap-node-children parent)
-            (remq target-node (org-mindmap-node-children parent)))
-      (setf (org-mindmap-node-parent target-node) grandparent)
+    (let* ((parent (org-mindmap-parser-node-parent target-node))
+           (grandparent (org-mindmap-parser-node-parent parent)))
+      (setf (org-mindmap-parser-node-children parent)
+            (remq target-node (org-mindmap-parser-node-children parent)))
+      (setf (org-mindmap-parser-node-parent target-node) grandparent)
       (if grandparent
-          (setf (org-mindmap-node-children grandparent)
-                (org-mindmap--insert-after (org-mindmap-node-children grandparent) parent target-node))
+          (setf (org-mindmap-parser-node-children grandparent)
+                (org-mindmap--insert-after (org-mindmap-parser-node-children grandparent) parent target-node))
         (setq roots (org-mindmap--insert-after roots parent target-node)))
       (let* ((props (org-mindmap--parse-properties start))
              (layout (intern (or (plist-get props :layout) (symbol-name org-mindmap-default-layout))))
              (spacing (string-to-number (or (plist-get props :spacing) (number-to-string org-mindmap-spacing)))))
-        (org-mindmap--update-buffer start end roots (org-mindmap-node-id target-node) layout spacing)))))
+        (org-mindmap--update-buffer start end roots (org-mindmap-parser-node-id target-node) layout spacing)))))
 
 (defun org-mindmap-demote ()
   "Move node down one level (becomes child of previous sibling)."
   (interactive)
   (cl-destructuring-bind (start end roots target-node) (org-mindmap--get-state)
     (unless target-node (error "No node at point"))
-    (let* ((parent (org-mindmap-node-parent target-node))
-           (siblings (if parent (org-mindmap-node-children parent) roots))
+    (let* ((parent (org-mindmap-parser-node-parent target-node))
+           (siblings (if parent (org-mindmap-parser-node-children parent) roots))
            (pos (cl-position target-node siblings)))
       (org-mindmap-validate-move 'demote target-node siblings pos)
       (let ((prev-sibling (nth (1- pos) siblings)))
         (setq siblings (remq target-node siblings))
         (if parent
-            (setf (org-mindmap-node-children parent) siblings)
+            (setf (org-mindmap-parser-node-children parent) siblings)
           (setq roots siblings))
-        (setf (org-mindmap-node-parent target-node) prev-sibling)
-        (setf (org-mindmap-node-children prev-sibling)
-              (append (org-mindmap-node-children prev-sibling) (list target-node)))
+        (setf (org-mindmap-parser-node-parent target-node) prev-sibling)
+        (setf (org-mindmap-parser-node-children prev-sibling)
+              (append (org-mindmap-parser-node-children prev-sibling) (list target-node)))
         (let* ((props (org-mindmap--parse-properties start))
                (layout (intern (or (plist-get props :layout) (symbol-name org-mindmap-default-layout))))
                (spacing (string-to-number (or (plist-get props :spacing) (number-to-string org-mindmap-spacing)))))
-          (org-mindmap--update-buffer start end roots (org-mindmap-node-id target-node) layout spacing))))))
+          (org-mindmap--update-buffer start end roots (org-mindmap-parser-node-id target-node) layout spacing))))))
 
 ;;
 ;; Auxilliary functions: conversion from and to org lists.
@@ -676,7 +676,7 @@ Accepts LAYOUT and SPACING."
 (declare-function org-at-item-p "org-list")
 
 (defun org-mindmap--lisp-to-nodes (lisp-list)
-  "Convert an org-list `LISP-LIST' into a list of `org-mindmap-node's."
+  "Convert an org-list `LISP-LIST' into a list of `org-mindmap-parser-node's."
   (let ((items (cdr lisp-list))
         (nodes nil))
     (dolist (item items)
@@ -690,20 +690,20 @@ Accepts LAYOUT and SPACING."
         (let* ((full-text (replace-regexp-in-string
                            "[ \t\n\r]+" " "
                            (string-trim (mapconcat #'identity (nreverse texts) " "))))
-               (node (org-mindmap-make-node :id (cl-gensym "node") :text full-text)))
+               (node (org-mindmap-parser-make-node :id (cl-gensym "node") :text full-text)))
           (when sublists
             (let ((children (mapcan #'org-mindmap--lisp-to-nodes (nreverse sublists))))
               (dolist (child children)
-                (setf (org-mindmap-node-parent child) node))
-              (setf (org-mindmap-node-children node) children)))
+                (setf (org-mindmap-parser-node-parent child) node))
+              (setf (org-mindmap-parser-node-children node) children)))
           (push node nodes))))
     (nreverse nodes)))
 
 (defun org-mindmap-list-to-mindmap ()
-  "Convert the ‘org-mode’ plain list at point into an ‘org-mindmap’ block."
+  "Convert the `org-mode' plain list at point into an `org-mindmap' block."
   (interactive)
   (unless (org-at-item-p)
-    (user-error "Not at an ‘org-mode’ list item"))
+    (user-error "Not at an `org-mode' list item"))
   (let* ((struct (org-list-struct))
          (top (org-list-get-top-point struct))
          ;; Extract list lisp structure while commanding org to delete the old list
@@ -717,27 +717,27 @@ Accepts LAYOUT and SPACING."
       (insert "#+begin_mindmap\n" rendered "\n#+end_mindmap\n"))))
 
 (defun org-mindmap--nodes-to-list-string (nodes indent)
-  "Convert a list of `org-mindmap-node's NODES into a plain list string.
+  "Convert a list of `org-mindmap-parser-node's NODES into a plain list string.
 Uses INDENT for the level."
   (let ((res nil)
         (prefix (make-string indent ?\ )))
     (dolist (node nodes)
-      (push (concat prefix "- " (org-mindmap-node-text node)) res)
-      (when (org-mindmap-node-children node)
+      (push (concat prefix "- " (org-mindmap-parser-node-text node)) res)
+      (when (org-mindmap-parser-node-children node)
         (push (org-mindmap--nodes-to-list-string
-               (org-mindmap-node-children node) (+ indent 2))
+               (org-mindmap-parser-node-children node) (+ indent 2))
               res)))
     (mapconcat #'identity (nreverse res) "\n")))
 
 (defun org-mindmap-to-list ()
-  "Convert the ‘org-mindmap’ block at point into an ‘org-mode’ plain list."
+  "Convert the `org-mindmap' block at point into an `org-mode' plain list."
   (interactive)
-  (let ((region (org-mindmap-get-region)))
+  (let ((region (org-mindmap-parser-get-region)))
     (unless region
-      (user-error "Not inside an ‘org-mindmap’ region"))
+      (user-error "Not inside an `org-mindmap' region"))
     (let* ((start (car region))
            (end (cdr region))
-           (roots (org-mindmap-parse-region start end))
+           (roots (org-mindmap-parser-parse-region start end))
            (list-string (org-mindmap--nodes-to-list-string roots 0)))
       (save-excursion
         (goto-char start)
@@ -765,42 +765,43 @@ Uses INDENT for the level."
 
 (defun org-mindmap--metaup-hook ()
   "Hijack M-<up> if inside a mindmap region."
-  (when (org-mindmap-region-active-p)
+  (when (org-mindmap-parser-region-active-p)
     (org-mindmap-move-up)
     t))
 
 (defun org-mindmap--metadown-hook ()
   "Hijack M-<down> if inside a mindmap region."
-  (when (org-mindmap-region-active-p)
+  (when (org-mindmap-parser-region-active-p)
     (org-mindmap-move-down)
     t))
 
 (defun org-mindmap--metaleft-hook ()
   "Hijack M-<left> if inside a mindmap region."
-  (when (org-mindmap-region-active-p)
+  (when (org-mindmap-parser-region-active-p)
     (org-mindmap-promote)
     t))
 
 (defun org-mindmap--metaright-hook ()
   "Hijack M-<right> if inside a mindmap region."
-  (when (org-mindmap-region-active-p)
+  (when (org-mindmap-parser-region-active-p)
     (org-mindmap-demote)
     t))
 
 (defun org-mindmap--tab-hook ()
   "Hijack TAB if inside a mindmap region and auto-align is enabled."
-  (when (and org-mindmap-auto-align (org-mindmap-region-active-p))
+  (when (and org-mindmap-auto-align (org-mindmap-parser-region-active-p))
     (org-mindmap-align)
     t))
 
 (defun org-mindmap--metareturn-hook ()
   "Hijack M-RET if inside a mindmap region."
-  (when (org-mindmap-region-active-p)
+  (when (org-mindmap-parser-region-active-p)
     (org-mindmap-insert-sibling)
     t))
 
 ;; Register the hooks
-(with-eval-after-load 'org
+(defun org-mindmap--register-hooks ()
+  "Register org-mindmap hooks into `org-mode'."
   (add-hook 'org-metaup-hook #'org-mindmap--metaup-hook)
   (add-hook 'org-metadown-hook #'org-mindmap--metadown-hook)
   (add-hook 'org-metaleft-hook #'org-mindmap--metaleft-hook)
@@ -808,8 +809,10 @@ Uses INDENT for the level."
   (add-hook 'org-tab-first-hook #'org-mindmap--tab-hook)
   (add-hook 'org-metareturn-hook #'org-mindmap--metareturn-hook))
 
+(org-mindmap--register-hooks)
+
 (define-minor-mode org-mindmap-mode
-  "Minor mode for editable mindmaps in ‘org-mode’."
+  "Minor mode for editable mindmaps in `org-mode'."
   :init-value nil
   :lighter " Mindmap"
   :keymap org-mindmap-mode-map)
@@ -817,14 +820,13 @@ Uses INDENT for the level."
 (defun org-mindmap-detect-on-command ()
   "Auto-activate `org-mindmap-mode' when cursor enters a mindmap region."
   (when (eq major-mode 'org-mode)
-    (let ((in-region (org-mindmap-region-active-p)))
+    (let ((in-region (org-mindmap-parser-region-active-p)))
       (when (not (eq (and org-mindmap-mode t) (and in-region t)))
         (org-mindmap-mode (if in-region 1 -1))))))
 
 (add-hook 'post-command-hook #'org-mindmap-detect-on-command)
 
-(with-eval-after-load 'org
-  (add-to-list 'org-structure-template-alist '("m" . "mindmap")))
+(add-to-list 'org-structure-template-alist '("m" . "mindmap"))
 
 (provide 'org-mindmap)
 
