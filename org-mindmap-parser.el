@@ -20,8 +20,10 @@
   "Data structure representing a single mindmap node."
   id text children depth parent row col)
 
-(defvar org-mindmap-parser-debug t
-  "If non-nil, print debug information to the *org-mindmap-debug* buffer during parsing.")
+(defcustom org-mindmap-parser-debug nil
+  "If non-nil, print debug information to the *org-mindmap-debug* buffer during parsing."
+  :type 'boolean
+  :group 'org-mindmap)
 
 (defun org-mindmap--debug (fmt &rest args)
   "Log debug messages to the dedicated trace buffer if =org-mindmap-parser-debug' is t."

@@ -838,13 +838,20 @@ Connectors are drawn functionally in `org-mindmap--draw-node'."
     (org-mindmap-align)
     t))
 
+(defun org-mindmap--metareturn-hook ()
+  "Hijack M-RET if inside a mindmap region."
+  (when (org-mindmap-region-active-p)
+    (org-mindmap-insert-sibling)
+    t))
+
 ;; Register the hooks
 (with-eval-after-load 'org
   (add-hook 'org-metaup-hook 'org-mindmap--metaup-hook)
   (add-hook 'org-metadown-hook 'org-mindmap--metadown-hook)
   (add-hook 'org-metaleft-hook 'org-mindmap--metaleft-hook)
   (add-hook 'org-metaright-hook 'org-mindmap--metaright-hook)
-  (add-hook 'org-tab-first-hook 'org-mindmap--tab-hook))
+  (add-hook 'org-tab-first-hook 'org-mindmap--tab-hook)
+  (add-hook 'org-metareturn-hook 'org-mindmap--metareturn-hook))
 
 (define-minor-mode org-mindmap-mode
   "Minor mode for editable mindmaps in org-mode."
@@ -860,6 +867,9 @@ Connectors are drawn functionally in `org-mindmap--draw-node'."
         (org-mindmap-mode (if in-region 1 -1))))))
 
 (add-hook 'post-command-hook #'org-mindmap-detect-on-command)
+
+(with-eval-after-load 'org
+  (add-to-list 'org-structure-template-alist '("m" . "mindmap")))
 
 (provide 'org-mindmap)
 
