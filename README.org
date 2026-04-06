@@ -62,21 +62,21 @@ Move them around with =M-<up>=, =M-<down>=, =M-<left>= and =M-<right>=. Put the 
 
 Here is the keys reference:
 
-| Command                    | Hotkey           | Description                                                          |
-|----------------------------+------------------+----------------------------------------------------------------------|
-| =org-mindmap-move-down=      | =M-<down>=         | move node one sibling down                                           |
-| =org-mindmap-move-up=        | =M-<up>=           | move node one sibling up                                             |
-| =org-mindmap-promote=        | =M-<left>=         | move node one level up, i.e. make it its parent's sibling            |
-| =org-mindmap-demote=         | =M-<right>=        | move node one level down, i.e. make it its sibling's child           |
-| =org-mindmap-insert-sibling= | =M-RET= , =C-c C-s=  | add a node near the current one (as its sibling)                     |
-| =org-mindmap-edit-node=      | =RET=              | edit node at point (if you just need to fix a typo you may do it     |
-|                            |                  | without this command, but when the node length changes significantly |
-|                            |                  | the map will likely fail to recover its structure)                   |
-| =org-mindmap-insert-child=   | =M-S-RET=, =C-c C-n= | add a child node to the current one                                  |
-| =org-mindmap-insert-root=    | =C-c C-r=          | add a new root node                                                  |
-| =org-mindmap-delete-node=    | =C-c C-d=          | delete the current node and all its descendants                      |
-| =org-mindmap-switch-layout=  | =C-c C-v=          | cycle between left, compact, and centered layouts                    |
-| =org-mindmap-align=          | =TAB=              | re-align the mindmap (if enabled via =org-mindmap-auto-align=)         |
+| Command                    | Hotkey           | Description                                                  |
+|----------------------------+------------------+--------------------------------------------------------------|
+| =org-mindmap-move-down=      | =M-<down>=         | move node one sibling down                                   |
+| =org-mindmap-move-up=        | =M-<up>=           | move node one sibling up                                     |
+| =org-mindmap-promote=        | =M-<left>=         | move node one level up, i.e. make it its parent's sibling    |
+| =org-mindmap-demote=         | =M-<right>=        | move node one level down, i.e. make it its sibling's child   |
+| =org-mindmap-insert-sibling= | =M-RET= , =C-c C-s=  | add a node near the current one (as its sibling)             |
+| =org-mindmap-edit-node=      | =RET=              | edit node at point[fn:1]                                     |
+| =org-mindmap-insert-child=   | =M-S-RET=, =C-c C-n= | add a child node to the current one                          |
+| =org-mindmap-insert-root=    | =C-c C-r=          | add a new root node                                          |
+| =org-mindmap-delete-node=    | =C-c C-d=          | delete the current node and all its descendants              |
+| =org-mindmap-switch-layout=  | =C-c C-v=          | cycle between left, compact, and centered layouts            |
+| =org-mindmap-align=          | =TAB=              | re-align the mindmap (if enabled via =org-mindmap-auto-align=) |
+
+[fn:1] If you're editing a leaf node and there's no markup ahead of it, or you just need to fix a typo or insert a character or two, you may do that without =org-mindmap-edit-node=, but when the node length changes significantly and map structure lines shift, the map will likely fail to recover its structure after the edit.
 
 ** From a list
 Lists and mindmaps are mostly isomorphic: any list can be transformed to a corresponding mindmap without loss of data (except that bullet types and enumerated lists are not supported for now), and vice versa.
@@ -182,3 +182,4 @@ Here's one more complex example mindmap for a chapter from Sönke Ahrens — How
                                                                          ╰─ at entry point
 #+end_mindmap
 #+end_src
+
