@@ -72,6 +72,7 @@ Here is the keys reference:
 | =org-mindmap-insert-child=   | =C-c C-n=         | add a child node to the current one                        |
 | =org-mindmap-insert-root=    | =C-c C-r=         | add a new root node                                        |
 | =org-mindmap-delete-node=    | =C-c C-d=         | delete the current node and all its descendants            |
+| =org-mindmap-switch-layout=  | =C-c C-v=         | cycle between left, compact, and centered layouts          |
 | =org-mindmap-align=          | =TAB=             | re-align the mindmap (if enabled via =org-mindmap-auto-align=) |
 
 ** From a list
@@ -147,35 +148,34 @@ There are three layouts:
 Here's one more complex example mindmap for a chapter from Sönke Ahrens — How to Take Smart Notes.
 #+begin_src 
 #+begin_mindmap :layout centered
-                          ╭─ мышления
-                          ├─ изучения
-┬─ Письмо ── помощник для ┼─ генерации идей
-│                         ├─ чтения
-│                         ╰─ понимания
-├─ Мышление ── происходит на бумаге
-├─ Правила ── держать ручку наготове
-│                            ╭─ мимолётные :: напоминания о мыслях ┬─ помести в одно место
-│                            │               ╭─ когда читаете      ╰─ обработай позже
-│                            │               ├─ кратко
-│                            ├─ о литературе ┼─ избирательно ── для своих тем
-│                            │               ├─ своими словами
-│                            │               ├─ с библиографическими данными
-│                            │               ╰─ в картотеку     ╭─ мимолётные
-│          ╭─ собери заметки ┤             ╭─ просмотри заметки ┼─ о литературе
-│          │                 │             │                    ╰─ раз в день
-│          │                 │             │                               ╭─ исследованиями
-│          │                 │             ├─ подумай ── как соотносятся с ┼─ размышлениями
-╰─ Процесс ┤                 │             ├─ одну для каждой идеи         ╰─ интересами
-           │                 │             │                  ╭─ полные предложения
-           │                 │             │                  ├─ источники
-           │                 ╰─ постоянные ┼─ как для другого ┼─ ссылки
-           ├─ преврати в черновик          │                  ├─ точно
-           ╰─ отредактируй                 │                  ├─ ясно
-                                           │                  ╰─ кратко
-                                           ├─ выбрось ── мимолётные
-                                           ├─ добавь ┬─ позади заметки, к которой относится напрямую
-                                           │         ╰─ ссылки
-                                           ╰─ убедись ── что сможешь найти ┬─ в указателе
-                                                                           ╰─ в точке входа
+                            ╭─ thinking
+                            ├─ studying
+┬─ Writing ── is an aid for ┼─ generating ideas
+│                           ├─ reading
+│                           ╰─ understanding
+├─ Thinking ── happens on paper
+├─ Rules ── keep a pen at hand
+├─ fleeting                 ╭─ fleeting :: reminders of thoughts ┬─ put in one place
+│                           │             ╭─ when reading        ╰─ process later
+│                           │             ├─ briefly
+│                           ├─ literature ┼─ selectively ── for your own topics
+│                           │             ├─ in your own words
+│                           │             ├─ with bibliographic data
+│                           │             ╰─ put to the reference system
+│          ╭─ collect notes ┤                            ╭─ feeting
+│          │                │            ╭─ review notes ┼─ literature
+│          │                │            │               ╰─ once a day  ╭─ research
+│          │                │            ├─ think ── how they relate to ┼─ reflections
+╰─ Process ┤                │            ├─ one note for each idea      ╰─ interests
+           │                │            │                        ╭─ full sentences
+           │                │            │                        ├─ sources
+           │                ╰─ permanent ┼─ as for another person ┼─ links
+           ├─ turn into draft            ├─ discard ── fleeting   ├─ precisely
+           ╰─ edit                       │                        ├─ clearly
+                                         │                        ╰─ briefly
+                                         ├─ add ┬─ behind the note it relates to directly
+                                         │      ╰─ links
+                                         ╰─ make sure ── you can find it ┬─ in the index
+                                                                         ╰─ at entry point
 #+end_mindmap
 #+end_src
