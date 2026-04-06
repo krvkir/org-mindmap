@@ -1,8 +1,108 @@
 #+TITLE: org-mindmap
 
-Editable mindmaps for org-mode. Just as simple as that.
+Editable mind maps for Org.
 
-Mindmaps are only left to right. Two-sided mindmaps are not supported.
+#+begin_src
+#+begin_mindmap
+               ╭─ dolor sit amet,                        ╭─ eiusmod
+┬─ Lorem ipsum ┤              ╭─ adipiscing elit, sed do ┼─ tempor
+               ╰─ consectetur ┤                          ╰─ incididunt
+                              ╰─ ut labore ── et dolore magna aliqua.
+#+end_mindmap
+#+end_src
+
+* Installation
+If you're using Emacs version 29 or later:
+#+begin_src elisp
+(use-package org-mindmap
+  :vc (:url "https://github.com/krvkir/org-mindmap.git" :rev :newest)
+  :after org)
+#+end_src
+
+If you're using Emacs version prior to 29, clone this repo and use this:
+#+begin_src elisp
+(use-package org-mindmap
+  :load-path "~/repos/emacs/org-mindmap/"
+  :after org)
+#+end_src
+
+* Usage
+** From scratch
+Insert a mindmap block via =org-insert-structure-template= with =C-c C-, m=:
+#+begin_src
+\#+begin_mindmap
+\#+end_mindmap
+#+end_src
+
+Add one root node. Just write it between the mindmap delimiters:
+#+begin_src
+\#+begin_mindmap
+Root node
+\#+end_mindmap
+#+end_src
+
+Add several siblings with =M-RET=, just as you'd do with a list:
+#+begin_src
+#+begin_mindmap
+┬─ Root node
+├─ Second node
+╰─ Third node
+#+end_mindmap
+#+end_src
+
+Move them around with =M-<up>=, =M-<down>=, =M-<left>= and =M-<right>=. Put the cursor on the node text and press one of those keys:
+#+begin_src
+#+begin_mindmap
+┬─ Root node ┬─ Third node
+             ╰─ Second node
+#+end_mindmap
+#+end_src
+
+Here is the keys reference:
+
+| Command                    | Hotkey          | Description                                                |
+|----------------------------+-----------------+------------------------------------------------------------|
+| =org-mindmap-move-down=      | =M-<down>=        | move node one sibling down                                 |
+| =org-mindmap-move-up=        | =M-<up>=          | move node one sibling up                                   |
+| =org-mindmap-promote=        | =M-<left>=        | move node one level up, i.e. make it its parent's sibling  |
+| =org-mindmap-demote=         | =M-<right>=       | move node one level down, i.e. make it its sibling's child |
+| =org-mindmap-insert-sibling= | =M-RET= , =C-c C-s= | add a node near the current one (as its sibling)           |
+| =org-mindmap-insert-child=   | =C-c C-n=         | add a child node to the current one                        |
+| =org-mindmap-delete-node=    | =C-c C-d=         | delete the current node and all its descendants            |
+
+** From a list
+Lists and mindmaps are mostly isomorphic: any list can be transformed to a corresponding mindmap without loss of data (except that bullet types and enumerated lists are not supported for now), and vice versa.
+
+If you have a list, you can transform it to mindmap with =org-list-to-mindmap=:
+#+begin_src
+- For want of a nail
+  - the shoe was lost,
+- For want of a shoe
+  - the horse was lost,
+- For want of a horse
+  - the rider was lost,
+- For want of a rider
+  - the battle was lost,
+- For want of a battle
+  - the kingdom was lost,
+- And all for the want
+  - of horseshoe nail.
+#+end_src
+
+#+begin_src
+#+begin_mindmap
+┬─ For want of a nail ── the shoe was lost,
+├─ For want of a shoe ── the horse was lost,
+├─ For want of a horse ── the rider was lost,
+├─ For want of a rider ── the battle was lost,
+├─ For want of a battle ── the kingdom was lost,
+╰─ And all for the want ── of horseshoe nail.
+#+end_mindmap
+#+end_src
+... and back to list with =org-mindmap-to-list=.
+
+* Layouts
+Mindmaps are only left to right. Two-sided mindmaps are not supported. Formatting inside nodes text is also not supported.
 
 There are three layouts:
 1. =left=, the simplest and the default one
@@ -17,9 +117,9 @@ There are three layouts:
 #+end_mindmap
 #+end_src
 
-2. =compacted=, the one where nodes float up if there's space for them (like node a here).
+2. =compact=, the one where nodes float up if there's space for them (like node a here).
 #+begin_src 
-#+begin_mindmap :layout compacted
+#+begin_mindmap :layout compact
 ┬─ root ng ┬─ node b ┬─ node d
 │          ╰─ node a ├─ node c
 │                    ╰─ node e ── node f
@@ -39,7 +139,8 @@ There are three layouts:
 #+end_mindmap
 #+end_src
 
-Here's more complex example mindmap for a chapter from Zönke Ahrens — How to Take Smart Notes.
+* Examples
+Here's one more complex example mindmap for a chapter from Sönke Ahrens — How to Take Smart Notes.
 #+begin_src 
 #+begin_mindmap :layout centered
                           ╭─ мышления
@@ -56,31 +157,21 @@ Here's more complex example mindmap for a chapter from Zönke Ahrens — How to 
 │                            │               ├─ своими словами
 │                            │               ├─ с библиографическими данными
 │                            │               ╰─ в картотеку     ╭─ мимолётные
-│                            │             ╭─ просмотри заметки ┼─ о литературе
-│          ╭─ собери заметки ┤             │                    ╰─ раз в день
+│          ╭─ собери заметки ┤             ╭─ просмотри заметки ┼─ о литературе
+│          │                 │             │                    ╰─ раз в день
 │          │                 │             │                               ╭─ исследованиями
 │          │                 │             ├─ подумай ── как соотносятся с ┼─ размышлениями
-│          │                 │             ├─ одну для каждой идеи         ╰─ интересами
-│          │                 │             │                  ╭─ полные предложения
-╰─ Процесс ┤                 │             │                  ├─ источники
-           │                 │             ├─ как для другого ┼─ ссылки
-           │                 │             │                  ├─ точно
-           │                 │             │                  ├─ ясно
-           │                 ╰─ постоянные ┤                  ╰─ кратко
-           ├─ преврати в черновик          ├─ выбрось ── мимолётные
-           ╰─ отредактируй                 ├─ добавь ┬─ позади заметки, к которой относится напрямую
+╰─ Процесс ┤                 │             ├─ одну для каждой идеи         ╰─ интересами
+           │                 │             │                  ╭─ полные предложения
+           │                 │             │                  ├─ источники
+           │                 ╰─ постоянные ┼─ как для другого ┼─ ссылки
+           ├─ преврати в черновик          │                  ├─ точно
+           ╰─ отредактируй                 │                  ├─ ясно
+                                           │                  ╰─ кратко
+                                           ├─ выбрось ── мимолётные
+                                           ├─ добавь ┬─ позади заметки, к которой относится напрямую
                                            │         ╰─ ссылки
-                                           ├─ убедись ── что сможешь найти ┬─ в указателе
-                                           │                               ╰─ в точке входа
-                                           │                    ╭─ снизу вверх
-                                           │                    ├─ посмотри ┬─ что есть
-                                           │                    │           ╰─ какие вопросы возникают
-                                           │                    │               ╭─ аргументы ┬─ поставить под сомнение
-                                           ╰─ разрабатывай темы ┼─ читай, чтобы ┤            ╰─ укрепить
-                                                                │               ╰─ доводы ┬─ расширить
-                                                                ├─ делай больше заметок   ╰─ изменить
-                                                                ├─ развивай идеи ── смотри, куда приведут
-                                                                ├─ следуй за интересом
-                                                                ╰─ выбирай путь, который ── обещает больше идей
+                                           ╰─ убедись ── что сможешь найти ┬─ в указателе
+                                                                           ╰─ в точке входа
 #+end_mindmap
 #+end_src
