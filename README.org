@@ -70,7 +70,9 @@ Here is the keys reference:
 | =org-mindmap-demote=         | =M-<right>=       | move node one level down, i.e. make it its sibling's child |
 | =org-mindmap-insert-sibling= | =M-RET= , =C-c C-s= | add a node near the current one (as its sibling)           |
 | =org-mindmap-insert-child=   | =C-c C-n=         | add a child node to the current one                        |
+| =org-mindmap-insert-root=    | =C-c C-r=         | add a new root node                                        |
 | =org-mindmap-delete-node=    | =C-c C-d=         | delete the current node and all its descendants            |
+| =org-mindmap-align=          | =TAB=             | re-align the mindmap (if enabled via =org-mindmap-auto-align=) |
 
 ** From a list
 Lists and mindmaps are mostly isomorphic: any list can be transformed to a corresponding mindmap without loss of data (except that bullet types and enumerated lists are not supported for now), and vice versa.

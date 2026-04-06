@@ -1,16 +1,17 @@
-;;; org-mindmap-parser.el --- Refactored 2D graph-walking parser
+;;; org-mindmap-parser.el --- Refactored 2D graph-walking parser -*- lexical-binding: t -*-
 
-;; Copyright (C) 2026
-;;
-;; Author: Assistant (with a little help from krvkir@gmail.com)
+;; Copyright (C) 2026 krvkir
+
+;; Author: krvkir <krvkir@gmail.com>
 ;; Version: 0.1.0
 ;; Keywords: org, tools, outlines
+;; Package-Requires: ((emacs "26.1") (cl-lib "0.5"))
+;; URL: https://github.com/krvkir/org-mindmap
 
 ;;; Commentary:
-;; Provides an editable mindmap visualization system within org-mode buffers.
-;; Implements Stages 1 to 8: Core data structures, region detection, parsing,
-;; rendering (left-aligned, compact, centered), alignment, structural editing,
-;; layout switching, and configuration via custom variables and text properties.
+;; Provides the parsing logic for editable mindmap visualizations in org-mode.
+;; It detects mindmap regions and walks the 2D grid of characters to build
+;; a tree structure of nodes.
 
 ;;; Code:
 
@@ -21,14 +22,20 @@
   id text children depth parent row col)
 
 (defcustom org-mindmap-parser-debug nil
-  "If non-nil, print debug information to the *org-mindmap-debug* buffer during parsing."
+  "If non-nil, print debug information to the *org-mindmap-debug* buffer."
   :type 'boolean
   :group 'org-mindmap)
 
+(defcustom org-mindmap-recovery-drift 3
+  "Maximum distance to drift when attempting to recover broken connections."
+  :type 'integer
+  :group 'org-mindmap)
+
 (defun org-mindmap--debug (fmt &rest args)
-  "Log debug messages to the dedicated trace buffer if =org-mindmap-parser-debug' is t."
+  "Log debug messages to the dedicated trace buffer.
+if `org-mindmap-parser-debug' is t."
   (when org-mindmap-parser-debug
-    (with-current-buffer (get-buffer-create "*org-mindmap-debug/")
+    (with-current-buffer (get-buffer-create "*org-mindmap-debug*")
       (goto-char (point-max))
       (insert (apply #'format fmt args) "\n"))))
 
@@ -56,20 +63,20 @@
     (puthash ?╯ (list org-mindmap-dir-up org-mindmap-dir-left) table)
     table))
 
-(defvar org-mindmap-recovery-drift 3)
-
 (defun org-mindmap--invert-dir (dir)
   "Reverse a direction vector (e.g., UP becomes DOWN)."
   (cons (- (car dir)) (- (cdr dir))))
 
 (defun org-mindmap--is-connector (char)
+  "Return non-nil if CHAR is a recognized connector character."
   (and char (gethash char org-mindmap-ports)))
 
 (defun org-mindmap--is-whitespace (char)
+  "Return non-nil if CHAR is whitespace or null."
   (or (null char) (= char ?\s) (= char ?\t)))
 
 (defun org-mindmap--grid-get (lines row col)
-  "Safely fetch a character from the 2D array of strings."
+  "Safely fetch a character from the 2D array of strings LINES at ROW and COL."
   (if (and (>= row 0) (< row (length lines)))
       (let ((line (aref lines row)))
         (if (and (>= col 0) (< col (length line)))
@@ -79,7 +86,7 @@
 
 ;; --- 2. Recovery System ---
 (defun org-mindmap--accepts-entry-p (lines row col moving-dir &optional recovering)
-  "Check if the coordinate at ROW and COL accepts an incoming connection from MOVING-DIR."
+  "Check if the coordinate at ROW and COL accepts entry from MOVING-DIR."
   (let ((char (org-mindmap--grid-get lines row col)))
     (cond
      ((null char) nil)
@@ -100,9 +107,11 @@
         (member entry-port ports))))))
 
 (defun org-mindmap--recover-connection (lines row col moving-dir)
-  "Attempt to find a misplaced connector within =org-mindmap-recovery-drift'.
-This is triggered when the walker steps into whitespace. It drifts PERPENDICULAR
-to the direction of movement to find broken lines (e.g., horizontal shifts of ├)."
+  "Attempt to find a misplaced connector.
+This is triggered when the walker fails to enter the next location from
+the current one. The search is performed within =org-mindmap-recovery-drift'
+symbols around the failed position. It drifts PERPENDICULAR to the direction
+of movement to find broken lines (e.g., horizontal shifts of ├)."
   (org-mindmap--debug "recover-connection: Started from (%d, %d) moving %S" row col moving-dir)
   (let ((found nil))
     (cl-loop for drift from 1 to org-mindmap-recovery-drift
@@ -174,32 +183,31 @@ Returns a list of nodes found along this path."
           nil)
       (let* ((char (org-mindmap--grid-get lines row col))
              (accepts (org-mindmap--accepts-entry-p lines row col moving-dir)))
-        (org-mindmap--debug "trace-path: Visiting (%d, %d) char: %c accepts: %s" row col (or char ?\s) accepts)
+        (org-mindmap--debug "trace-path: Visiting (%d, %d) char: %c accepts: %s"
+                            row col (or char ?\s) accepts)
 
         (if (not accepts)
-            (let ((next-row (+ row (cdr moving-dir)))
-                  (next-col (+ col (car moving-dir))))
-              ;; If we are moving horizontally, we handle gaps by skipping spaces.
-              (if (and (= (cdr moving-dir) 0) (org-mindmap--is-whitespace char))
-                  (let ((skip-row row)
-                        (skip-col col)
-                        (skipped 0)
-                        (found nil))
-                    (while (and (not found) (< skipped org-mindmap-recovery-drift))
-                      (if (org-mindmap--accepts-entry-p lines skip-row skip-col moving-dir t)
-                          (setq found (cons skip-row skip-col))
-                        (if (not (org-mindmap--is-whitespace (org-mindmap--grid-get lines skip-row skip-col)))
-                            (setq skipped org-mindmap-recovery-drift)
-                          (setq skip-col (+ skip-col (car moving-dir)))
-                          (cl-incf skipped))))
-                    (if found
-                        (org-mindmap--trace-path lines (car found) (cdr found) moving-dir visited)
-                      nil))
-                ;; Always try vertical-movement horizontal-drift recovery for invalid connectors or whitespace!
-                (let ((new-pos (org-mindmap--recover-connection lines row col moving-dir)))
-                  (if new-pos
-                      (org-mindmap--trace-path lines (car new-pos) (cdr new-pos) moving-dir visited)
-                    nil))))
+            (if (and (= (cdr moving-dir) 0) (org-mindmap--is-whitespace char))
+                (let ((skip-row row)
+                      (skip-col col)
+                      (skipped 0)
+                      (found nil))
+                  (while (and (not found) (< skipped org-mindmap-recovery-drift))
+                    (if (org-mindmap--accepts-entry-p lines skip-row skip-col moving-dir t)
+                        (setq found (cons skip-row skip-col))
+                      (if (not (org-mindmap--is-whitespace
+                                (org-mindmap--grid-get lines skip-row skip-col)))
+                          (setq skipped org-mindmap-recovery-drift)
+                        (setq skip-col (+ skip-col (car moving-dir)))
+                        (cl-incf skipped))))
+                  (if found
+                      (org-mindmap--trace-path lines (car found) (cdr found) moving-dir visited)
+                    nil))
+              ;; Always try vertical-movement horizontal-drift recovery!
+              (let ((new-pos (org-mindmap--recover-connection lines row col moving-dir)))
+                (if new-pos
+                    (org-mindmap--trace-path lines (car new-pos) (cdr new-pos) moving-dir visited)
+                  nil)))
 
           (when accepts
             (puthash (cons row col) t visited)
@@ -236,7 +244,26 @@ Returns a list of nodes found along this path."
                                      (org-mindmap--trace-path lines b-row b-col branch-dir visited)))
                                  remaining-ports))))))))))))
 
-;; --- 5. Main Parser ---
+;; --- 5. Region Detection ---
+(defun org-mindmap-get-region ()
+  "Detect #+begin_mindmap and #+end_mindmap boundaries around point.
+Returns (start . end) or nil."
+  (save-excursion
+    (let ((orig (point))
+          start end)
+      (goto-char (line-end-position))
+      (when (re-search-backward "^[ \t]*#\\+begin_mindmap\\b" nil t)
+        (setq start (line-beginning-position))
+        (when (re-search-forward "^[ \t]*#\\+end_mindmap\\b" nil t)
+          (setq end (line-end-position))
+          (when (and (<= start orig) (<= orig end))
+            (cons start end)))))))
+
+(defun org-mindmap-region-active-p ()
+  "Check if cursor is inside a mindmap region."
+  (not (null (org-mindmap-get-region))))
+
+;; --- 6. Main Parser ---
 (defun org-mindmap-parse-region (&optional start end)
   "Parse mindmap within START to END into a tree structure."
   (unless (and start end)
@@ -245,8 +272,7 @@ Returns a list of nodes found along this path."
         (setq start (car region)
               end (cdr region)))))
   (when (and start end)
-    (let* ((orig-point (point))
-           (lines-list nil))
+    (let ((lines-list nil))
       (save-excursion
         (goto-char start)
         (forward-line 1)

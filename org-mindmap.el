@@ -1,21 +1,23 @@
 ;;; org-mindmap.el --- Editable mindmap visualization in org-mode -*- lexical-binding: t -*-
 
-;; Copyright (C) 2026
-;;
-;; Author: Assistant (with a little help from krvkir@gmail.com)
+;; Copyright (C) 2026 krvkir
+
+;; Author: krvkir <krvkir@gmail.com>
 ;; Version: 0.1.0
 ;; Keywords: org, tools, outlines
+;; Package-Requires: ((emacs "26.1") (cl-lib "0.5") (org "9.1"))
+;; URL: https://github.com/krvkir/org-mindmap
 
 ;;; Commentary:
 ;; Provides an editable mindmap visualization system within org-mode buffers.
-;; Implements Stages 1 to 8: Core data structures, region detection, parsing,
+;; Implements core data structures, region detection, parsing,
 ;; rendering (left-aligned, compact, centered), alignment, structural editing,
 ;; layout switching, and configuration via custom variables and text properties.
 
 ;;; Code:
 
-(add-to-list 'load-path "./")
 (require 'cl-lib)
+(require 'org)
 (require 'org-mindmap-parser)
 
 (defgroup org-mindmap nil
@@ -68,41 +70,9 @@
   "Apply text face to STR."
   (propertize str 'face 'org-mindmap-face-text))
 
-;; Stage 1: Foundation — Data Structures and Region Detection
-
-(defun org-mindmap-get-region ()
-  "Detect #+begin_mindmap and #+end_mindmap boundaries around point.
-Returns (start . end) or nil."
-  (save-excursion
-    (let ((orig (point))
-          start end)
-      (goto-char (line-end-position))
-      (when (re-search-backward "^[ \t]*#\\+begin_mindmap\\b" nil t)
-        (setq start (line-beginning-position))
-        (when (re-search-forward "^[ \t]*#\\+end_mindmap\\b" nil t)
-          (setq end (line-end-position))
-          (when (and (<= start orig) (<= orig end))
-            (cons start end)))))))
-
-(defun org-mindmap-region-active-p ()
-  "Check if cursor is inside a mindmap region."
-  (not (null (org-mindmap-get-region))))
-
-;; Stage 2: Basic Parsing — Visual to Tree
-;; now implemented in org-mindmap-parser package
-
-(defalias 'org-mindmap-parse 'org-mindmap-parse-region)
-(defalias 'org-mindmap-build-tree 'org-mindmap-parse-region)
-
-(defun org-mindmap-identify-roots (roots)
-  "Return root nodes (simply returns ROOTS as parsed)."
-  roots)
-
-;; Stage 3 & 6: Rendering and Layout Engine
-
-(defun org-mindmap-calculate-widths (node)
-  "Measure text display width for NODE."
-  (string-width (org-mindmap-node-text node)))
+;;
+;; Rendering and Layout Engine
+;;
 
 (defun org-mindmap--move-to (row col)
   "Navigate to ROW and COL within current buffer, padding spaces if needed."
@@ -116,19 +86,8 @@ Returns (start . end) or nil."
   (forward-line row)
   (move-to-column col t))
 
-
-(defun org-mindmap-calc-left (node col current-row spacing)
-  "Dummy function for calculating positions explicitly."
-  (setf (org-mindmap-node-col node) col)
-  (setf (org-mindmap-node-row node) current-row)
-  current-row)
-
-(defun org-mindmap-calc-centered (node col current-row spacing)
-  "Dummy function for explicit centering."
-  current-row)
-
 (defun org-mindmap--node-occupancy (n spacing)
-  "Return (start-col end-col) for node N."
+  "Return (start-col end-col) for node N with SPACING."
   (let* ((col (org-mindmap-node-col n))
          (len (string-width (org-mindmap-node-text n)))
          (parent (org-mindmap-node-parent n))
@@ -141,7 +100,8 @@ Returns (start . end) or nil."
     (list start-col end-col)))
 
 (defun org-mindmap--get-occupied (nodes spacing)
-  "Return a list of (row start-col end-col) for all NODES and their vertical connectors."
+  "Return a list of (row start-col end-col) for all NODES
+and their vertical connectors."
   (let ((occ nil))
     (dolist (n nodes)
       ;; Add the node itself (including its horizontal connector from parent)
@@ -157,9 +117,8 @@ Returns (start . end) or nil."
                      (push (list r conn-c (1+ conn-c)) occ))))))
     occ))
 
-
 (defun org-mindmap--check-overlap-subtree (nodes delta occupied spacing)
-  "Check if shifting NODES by DELTA overlaps with OCCUPIED map."
+  "Check if shifting NODES by DELTA overlaps with OCCUPIED map with SPACING."
   (let ((nodes-occ (org-mindmap--get-occupied nodes spacing)))
     (cl-loop for (n-r n-s n-e) in nodes-occ
              thereis
@@ -168,11 +127,10 @@ Returns (start . end) or nil."
                         thereis (and (= r occ-r)
                                      (not (or (<= n-e occ-s) (>= n-s occ-e)))))))))
 
-(defun org-mindmap-build-subtree (node col conn-c layout spacing)
+(defun org-mindmap-build-subtree (node col layout spacing)
   "Recursively calculates rows and cols for NODE and its children."
   (let* ((text-len (string-width (org-mindmap-node-text node)))
          (child-col (+ col text-len 4))
-         (child-conn-c (+ col text-len 1))
          (children (org-mindmap-node-children node)))
 
     (setf (org-mindmap-node-col node) col)
@@ -188,7 +146,7 @@ Returns (start . end) or nil."
 
         (dolist (child children)
           (cl-destructuring-bind (c-min _ c-nodes)
-              (org-mindmap-build-subtree child child-col child-conn-c layout spacing)
+              (org-mindmap-build-subtree child child-col layout spacing)
 
             (let* ((c-root-row (org-mindmap-node-row child))
                    (min-delta (if prev-child-row
@@ -228,14 +186,14 @@ Returns (start . end) or nil."
           (list 0 max-r all-nodes))))))
 
 (defun org-mindmap-build-tree-layout (roots layout spacing)
-  "Assigns row and col to all nodes in ROOTS."
+  "Assigns row and col to all nodes in ROOTS using LAYOUT and SPACING."
   (let ((global-occupied nil)
         (all-nodes nil)
         (prev-root-row nil))
 
     (dolist (root roots)
       (cl-destructuring-bind (r-min _ r-nodes)
-          (org-mindmap-build-subtree root 3 0 layout spacing)
+          (org-mindmap-build-subtree root 3 layout spacing)
 
         (let* ((r-root-row (org-mindmap-node-row root))
                (min-delta (if prev-root-row
@@ -311,15 +269,15 @@ Returns (start . end) or nil."
         (dolist (child children)
           (org-mindmap--draw-node child))))))
 
-
 (defun org-mindmap-render-tree (roots &optional layout spacing)
-  "Render ROOTS evaluating the specified LAYOUT geometry."
+  "Render ROOTS evaluating the specified LAYOUT geometry and SPACING."
   (unless layout (setq layout org-mindmap-default-layout))
   (unless spacing (setq spacing org-mindmap-spacing))
   (if (null roots)
       ""
     (org-mindmap-build-tree-layout roots layout spacing)
     (with-temp-buffer
+      (setq indent-tabs-mode nil)
       (let ((inhibit-read-only t)
             (first-r (org-mindmap-node-row (car roots)))
             (last-r (org-mindmap-node-row (car (last roots)))))
@@ -349,45 +307,9 @@ Returns (start . end) or nil."
           (org-mindmap--draw-node root)))
       (buffer-string))))
 
-(defalias 'org-mindmap-render 'org-mindmap-render-tree)
-
-;; Alias placeholders to fulfill strict prompt test API signatures
-(defun org-mindmap-calculate-positions (roots start-row start-col spacing)
-  "Dummy function for calculating positions explicitly.
-Positions are normally computed during `org-mindmap-render-tree'."
-  (let ((current-row start-row))
-    (dolist (node roots)
-      (org-mindmap-calc-left node start-col current-row spacing)
-      (cl-incf current-row))
-    current-row))
-
-(defun org-mindmap-draw-connectors (&rest _args)
-  "Dummy function for explicitly drawing connectors.
-Connectors are drawn functionally in `org-mindmap--draw-node'."
-  t)
-
-;; Stage 8: Alignment, Properties, and Regeneration
-
-(defun org-mindmap-layout-left (roots)
-  "Render ROOTS using the left-aligned layout."
-  (org-mindmap-render-tree roots 'left))
-
-(defun org-mindmap-layout-compact (roots)
-  "Render ROOTS using the compacted layout."
-  (org-mindmap-render-tree roots 'compact))
-
-(defun org-mindmap-layout-centered (roots)
-  "Render ROOTS using the centered layout."
-  (org-mindmap-render-tree roots 'centered))
-
-(defun org-mindmap-get-layout ()
-  "Return current layout setting for the mindmap at point."
-  (let ((region (org-mindmap-get-region)))
-    (if region
-        (let* ((props (org-mindmap--parse-properties (car region)))
-               (layout (plist-get props :layout)))
-          (if layout (intern layout) org-mindmap-default-layout))
-      org-mindmap-default-layout)))
+;;
+;; Alignment, Properties, and Regeneration
+;;
 
 (defun org-mindmap--parse-properties (start)
   "Extract property list from the block header at START."
@@ -418,7 +340,7 @@ Connectors are drawn functionally in `org-mindmap--draw-node'."
                  (_ 'left))))
     (save-excursion
       (goto-char start)
-      (if (re-search-forward "\(^[ 	]*#\+begin_mindmap\)\(.*\)$" (line-end-position) t)
+      (if (re-search-forward "\\(^[ \t]*#\\+begin_mindmap\\)\\(.*\\)$" (line-end-position) t)
           (let ((args (match-string 2)))
             (save-match-data
               (if (string-match " :layout [a-zA-Z]+" args)
@@ -480,7 +402,9 @@ Connectors are drawn functionally in `org-mindmap--draw-node'."
            (target-id (when target-node (org-mindmap-node-id target-node))))
       (org-mindmap--update-buffer start end roots target-id layout spacing))))
 
-;; Stage 4: Structural Editing — Insert and Delete
+;;
+;; Structural Editing — Insert and Delete
+;;
 
 (defun org-mindmap--find-node-by-pos (roots row col)
   "Recursively find and return the node in ROOTS that spans ROW and COL."
@@ -548,7 +472,7 @@ Connectors are drawn functionally in `org-mindmap--draw-node'."
       nil)))
 
 (defun org-mindmap-insert-child (&optional text)
-  "Create new child node under node at cursor position."
+  "Create new child node with optional TEXT under node at cursor position."
   (interactive (list (read-string "Child text (default 'New Node'): " nil nil "New Node")))
   (when (or (null text) (string-empty-p text))
     (setq text "New Node"))
@@ -563,7 +487,7 @@ Connectors are drawn functionally in `org-mindmap--draw-node'."
         (org-mindmap--update-buffer start end roots (org-mindmap-node-id new-node) layout spacing)))))
 
 (defun org-mindmap-insert-sibling (&optional text)
-  "Create new sibling node after node at cursor position."
+  "Create new sibling node with optional TEXT after node at cursor position."
   (interactive (list (read-string "Sibling text (default 'New Node'): " nil nil "New Node")))
   (when (or (null text) (string-empty-p text))
     (setq text "New Node"))
@@ -582,7 +506,7 @@ Connectors are drawn functionally in `org-mindmap--draw-node'."
         (org-mindmap--update-buffer start end roots (org-mindmap-node-id new-node) layout spacing)))))
 
 (defun org-mindmap-insert-root (&optional text)
-  "Create new root node at end of existing roots."
+  "Create new root node with optional TEXT at end of existing roots."
   (interactive (list (read-string "Root text (default 'New Root'): " nil nil "New Root")))
   (when (or (null text) (string-empty-p text))
     (setq text "New Root"))
@@ -622,7 +546,9 @@ Connectors are drawn functionally in `org-mindmap--draw-node'."
              (spacing (string-to-number (or (plist-get props :spacing) (number-to-string org-mindmap-spacing)))))
         (org-mindmap--update-buffer start end roots next-focus-id layout spacing)))))
 
-;; Stage 5: Movement Operations — Reorder and Restructure
+;;
+;; Movement Operations — Reorder and Restructure
+;;
 
 (defun org-mindmap--list-swap (lst i j)
   "Swap elements at index I and J in LST."
@@ -722,7 +648,15 @@ Connectors are drawn functionally in `org-mindmap--draw-node'."
                (spacing (string-to-number (or (plist-get props :spacing) (number-to-string org-mindmap-spacing)))))
           (org-mindmap--update-buffer start end roots (org-mindmap-node-id target-node) layout spacing))))))
 
+;;
 ;; Auxilliary functions: conversion from and to org lists.
+;;
+
+(declare-function org-list-struct "org-list")
+(declare-function org-list-get-top-point "org-list")
+(declare-function org-list-to-lisp "org-list")
+(declare-function org-at-item-p "org-list")
+
 (defun org-mindmap--lisp-to-nodes (lisp-list)
   "Convert an org-list `LISP-LIST' into a list of `org-mindmap-node's."
   (let ((items (cdr lisp-list))
@@ -796,7 +730,9 @@ Connectors are drawn functionally in `org-mindmap--draw-node'."
                                  (point)))
           (insert list-string "\n"))))))
 
-;; Stage 7: Minor Mode and Keybindings
+;;
+;; Minor Mode and Keybindings
+;;
 
 (defvar org-mindmap-mode-map
   (let ((map (make-sparse-keymap)))
