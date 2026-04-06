@@ -752,6 +752,21 @@ Uses INDENT for the level."
                                  (point)))
           (insert list-string "\n"))))))
 
+(defun org-mindmap-edit-node ()
+  "Edit the text of the node at point and refresh the mindmap."
+  (interactive)
+  (cl-destructuring-bind (start end roots target-node) (org-mindmap--get-state)
+    (unless target-node (error "No node at point"))
+    (let* ((old-text (org-mindmap-parser-node-text target-node))
+           (new-text (read-string "Edit node: " old-text))
+           (props (org-mindmap--parse-properties start))
+           (layout (intern (or (plist-get props :layout)
+                               (symbol-name org-mindmap-default-layout))))
+           (spacing (string-to-number (or (plist-get props :spacing)
+                                          (number-to-string org-mindmap-spacing)))))
+      (setf (org-mindmap-parser-node-text target-node) new-text)
+      (org-mindmap--update-buffer start end roots (org-mindmap-parser-node-id target-node) layout spacing))))
+
 ;;
 ;; Minor Mode and Keybindings
 ;;
