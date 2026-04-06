@@ -11,6 +11,8 @@ Editable mind maps for Org.
 #+end_mindmap
 #+end_src
 
+[[./img/demo.gif]]
+
 * Installation
 If you're using Emacs version 29 or later:
 #+begin_src elisp
