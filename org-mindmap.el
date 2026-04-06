@@ -778,6 +778,10 @@ Uses INDENT for the level."
     (define-key map (kbd "C-c C-r") #'org-mindmap-insert-root)
     (define-key map (kbd "C-c C-d") #'org-mindmap-delete-node)
     (define-key map (kbd "C-c C-v") #'org-mindmap-switch-layout)
+    (define-key map (kbd "M-S-<return>") (lambda () (interactive) (org-mindmap-insert-child "")))
+    (define-key map (kbd "M-S-RET") (lambda () (interactive) (org-mindmap-insert-child "")))
+    (define-key map (kbd "<return>") #'org-mindmap-edit-node)
+    (define-key map (kbd "RET") #'org-mindmap-edit-node)
     map)
   "Keymap for `org-mindmap-mode'.")
 
