@@ -8,6 +8,22 @@
 ;; Package-Requires: ((emacs "26.1") (cl-lib "0.5"))
 ;; URL: https://github.com/krvkir/org-mindmap
 
+;; This file is not part of GNU Emacs.
+
+;; This program is free software; you can redistribute it and/or modify
+;; it under the terms of the GNU General Public License as published by
+;; the Free Software Foundation, either version 3 of the License, or
+;; (at your option) any later version.
+
+;; This program is distributed in the hope that it will be useful,
+;; but WITHOUT ANY WARRANTY; without even the implied warranty of
+;; MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+;; GNU General Public License for more details.
+
+;; You should have received a copy of the GNU General Public License
+;; along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
+
 ;;; Commentary:
 ;; Provides the parsing logic for editable mindmap visualizations in org-mode.
 ;; It detects mindmap regions and walks the 2D grid of characters to build
@@ -33,7 +49,7 @@
 
 (defun org-mindmap--debug (fmt &rest args)
   "Log debug messages to the dedicated trace buffer.
-if `org-mindmap-parser-debug' is t."
+If `org-mindmap-parser-debug' is t, format FMT with ARGS."
   (when org-mindmap-parser-debug
     (with-current-buffer (get-buffer-create "*org-mindmap-debug*")
       (goto-char (point-max))
@@ -64,7 +80,7 @@ if `org-mindmap-parser-debug' is t."
     table))
 
 (defun org-mindmap--invert-dir (dir)
-  "Reverse a direction vector (e.g., UP becomes DOWN)."
+  "Reverse a direction vector DIR (e.g., UP becomes DOWN)."
   (cons (- (car dir)) (- (cdr dir))))
 
 (defun org-mindmap--is-connector (char)
@@ -76,7 +92,7 @@ if `org-mindmap-parser-debug' is t."
   (or (null char) (= char ?\s) (= char ?\t)))
 
 (defun org-mindmap--grid-get (lines row col)
-  "Safely fetch a character from the 2D array of strings LINES at ROW and COL."
+  "Safely fetch a character from 2D array of strings LINES at ROW and COL."
   (if (and (>= row 0) (< row (length lines)))
       (let ((line (aref lines row)))
         (if (and (>= col 0) (< col (length line)))
@@ -86,7 +102,8 @@ if `org-mindmap-parser-debug' is t."
 
 ;; --- 2. Recovery System ---
 (defun org-mindmap--accepts-entry-p (lines row col moving-dir &optional recovering)
-  "Check if the coordinate at ROW and COL accepts entry from MOVING-DIR."
+  "Check if the coordinate in LINES at ROW and COL accepts entry from MOVING-DIR.
+If RECOVERING is non-nil, allow slight drift for broken connections."
   (let ((char (org-mindmap--grid-get lines row col)))
     (cond
      ((null char) nil)
@@ -107,11 +124,11 @@ if `org-mindmap-parser-debug' is t."
         (member entry-port ports))))))
 
 (defun org-mindmap--recover-connection (lines row col moving-dir)
-  "Attempt to find a misplaced connector.
+  "Attempt to find a misplaced connector in LINES at ROW, COL.
 This is triggered when the walker fails to enter the next location from
-the current one. The search is performed within =org-mindmap-recovery-drift'
-symbols around the failed position. It drifts PERPENDICULAR to the direction
-of movement to find broken lines (e.g., horizontal shifts of ├)."
+the current one.  The search is performed within `org-mindmap-recovery-drift'
+symbols around the failed position.  It drifts PERPENDICULAR to the direction
+of MOVING-DIR to find broken lines (e.g., horizontal shifts of ├)."
   (org-mindmap--debug "recover-connection: Started from (%d, %d) moving %S" row col moving-dir)
   (let ((found nil))
     (cl-loop for drift from 1 to org-mindmap-recovery-drift
@@ -133,8 +150,9 @@ of movement to find broken lines (e.g., horizontal shifts of ├)."
 
 ;; --- 3. Text Parsing ---
 (defun org-mindmap--parse-text-node (lines row start-col moving-dir visited)
-  "Greedily consume non-connector characters to form a node label.
-Supports bidirectional reading depending on MOVING-DIR."
+  "Greedily consume non-connector characters in LINES to form a node label.
+Starts at ROW and START-COL.  Supports bidirectional reading depending
+on MOVING-DIR.  Updates VISITED."
   (let ((text-chars nil)
         (curr-col start-col)
         (next-col-to-trace nil)
@@ -169,7 +187,7 @@ Supports bidirectional reading depending on MOVING-DIR."
 ;; --- 4. The 2D Walker ---
 (defun org-mindmap--trace-path (lines row col moving-dir visited)
   "Walk the 2D grid from ROW and COL in MOVING-DIR.
-LINES is a vector of strings. VISITED is a hash table of processed coordinates.
+LINES is a vector of strings.  VISITED is a hash table of processed coordinates.
 Returns a list of nodes found along this path."
   (org-mindmap--debug "trace-path: Started at (%d, %d) moving %S" row col moving-dir)
   (if (or (< row 0) (>= row (length lines))

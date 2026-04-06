@@ -8,8 +8,24 @@
 ;; Package-Requires: ((emacs "26.1") (cl-lib "0.5") (org "9.1"))
 ;; URL: https://github.com/krvkir/org-mindmap
 
+;; This file is not part of GNU Emacs.
+
+;; This program is free software; you can redistribute it and/or modify
+;; it under the terms of the GNU General Public License as published by
+;; the Free Software Foundation, either version 3 of the License, or
+;; (at your option) any later version.
+
+;; This program is distributed in the hope that it will be useful,
+;; but WITHOUT ANY WARRANTY; without even the implied warranty of
+;; MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+;; GNU General Public License for more details.
+
+;; You should have received a copy of the GNU General Public License
+;; along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
+
 ;;; Commentary:
-;; Provides an editable mindmap visualization system within org-mode buffers.
+;; Provides an editable mindmap visualization system within ‘org-mode’ buffers.
 ;; Implements core data structures, region detection, parsing,
 ;; rendering (left-aligned, compact, centered), alignment, structural editing,
 ;; layout switching, and configuration via custom variables and text properties.
@@ -21,7 +37,7 @@
 (require 'org-mindmap-parser)
 
 (defgroup org-mindmap nil
-  "Editable mindmap visualization within org-mode."
+  "Editable mindmap visualization within ‘org-mode’."
   :group 'org)
 
 (defcustom org-mindmap-spacing 1
@@ -55,7 +71,7 @@
   :group 'org-mindmap)
 
 (defface org-mindmap-face-text
-  '((t :inherit default :weight bold))
+  '((t :inherit bold))
   "Face for node text."
   :group 'org-mindmap)
 
@@ -100,8 +116,8 @@
     (list start-col end-col)))
 
 (defun org-mindmap--get-occupied (nodes spacing)
-  "Return a list of (row start-col end-col) for all NODES
-and their vertical connectors."
+  "Return a list of (row start-col end-col) for all NODES.
+This also includes their vertical connectors and respects SPACING."
   (let ((occ nil))
     (dolist (n nodes)
       ;; Add the node itself (including its horizontal connector from parent)
@@ -128,7 +144,8 @@ and their vertical connectors."
                                      (not (or (<= n-e occ-s) (>= n-s occ-e)))))))))
 
 (defun org-mindmap-build-subtree (node col layout spacing)
-  "Recursively calculates rows and cols for NODE and its children."
+  "Recursively calculates rows and cols for NODE and its children.
+Requires COL, LAYOUT, and SPACING."
   (let* ((text-len (string-width (org-mindmap-node-text node)))
          (child-col (+ col text-len 4))
          (children (org-mindmap-node-children node)))
@@ -362,7 +379,8 @@ and their vertical connectors."
       nil)))
 
 (defun org-mindmap--update-buffer (start end roots &optional target-id layout spacing)
-  "Replace region from START to END with rendered ROOTS, and focus TARGET-ID."
+  "Replace region from START to END with rendered ROOTS, and focus TARGET-ID.
+Accepts LAYOUT and SPACING."
   (let ((rendered (org-mindmap-render-tree roots layout spacing)))
     (save-excursion
       (goto-char start)
@@ -528,7 +546,7 @@ and their vertical connectors."
     (unless target-node (error "No node at point"))
     (when (and (org-mindmap-node-children target-node)
                org-mindmap-confirm-delete
-               (not (y-or-n-p "Node has children. Delete anyway? ")))
+               (not (y-or-n-p "Node has children.  Delete anyway? ")))
       (user-error "Aborted"))
     (let ((parent (org-mindmap-node-parent target-node))
           (next-focus-id nil))
@@ -559,7 +577,7 @@ and their vertical connectors."
     (append vec nil)))
 
 (defun org-mindmap-validate-move (operation target-node siblings pos)
-  "Check if move OPERATION is legal for TARGET-NODE."
+  "Validate that move OPERATION is legal for TARGET-NODE with SIBLINGS at POS."
   (pcase operation
     ('up (when (or (null pos) (= pos 0))
            (user-error "Cannot move up: already first sibling")))
@@ -681,11 +699,11 @@ and their vertical connectors."
           (push node nodes))))
     (nreverse nodes)))
 
-(defun org-list-to-mindmap ()
-  "Convert the org-mode plain list at point into an org-mindmap block."
+(defun org-mindmap-list-to-mindmap ()
+  "Convert the ‘org-mode’ plain list at point into an ‘org-mindmap’ block."
   (interactive)
   (unless (org-at-item-p)
-    (user-error "Not at an org-mode list item"))
+    (user-error "Not at an ‘org-mode’ list item"))
   (let* ((struct (org-list-struct))
          (top (org-list-get-top-point struct))
          ;; Extract list lisp structure while commanding org to delete the old list
@@ -699,7 +717,8 @@ and their vertical connectors."
       (insert "#+begin_mindmap\n" rendered "\n#+end_mindmap\n"))))
 
 (defun org-mindmap--nodes-to-list-string (nodes indent)
-  "Convert a list of `org-mindmap-node's into an org-mode plain list string."
+  "Convert a list of `org-mindmap-node's NODES into a plain list string.
+Uses INDENT for the level."
   (let ((res nil)
         (prefix (make-string indent ?\ )))
     (dolist (node nodes)
@@ -711,11 +730,11 @@ and their vertical connectors."
     (mapconcat #'identity (nreverse res) "\n")))
 
 (defun org-mindmap-to-list ()
-  "Convert the org-mindmap block at point into an org-mode plain list."
+  "Convert the ‘org-mindmap’ block at point into an ‘org-mode’ plain list."
   (interactive)
   (let ((region (org-mindmap-get-region)))
     (unless region
-      (user-error "Not inside an org-mindmap region"))
+      (user-error "Not inside an ‘org-mindmap’ region"))
     (let* ((start (car region))
            (end (cdr region))
            (roots (org-mindmap-parse-region start end))
@@ -736,11 +755,11 @@ and their vertical connectors."
 
 (defvar org-mindmap-mode-map
   (let ((map (make-sparse-keymap)))
-    (define-key map (kbd "C-c C-n") 'org-mindmap-insert-child)
-    (define-key map (kbd "C-c C-s") 'org-mindmap-insert-sibling)
-    (define-key map (kbd "C-c C-r") 'org-mindmap-insert-root)
-    (define-key map (kbd "C-c C-d") 'org-mindmap-delete-node)
-    (define-key map (kbd "C-c C-v") 'org-mindmap-switch-layout)
+    (define-key map (kbd "C-c C-n") #'org-mindmap-insert-child)
+    (define-key map (kbd "C-c C-s") #'org-mindmap-insert-sibling)
+    (define-key map (kbd "C-c C-r") #'org-mindmap-insert-root)
+    (define-key map (kbd "C-c C-d") #'org-mindmap-delete-node)
+    (define-key map (kbd "C-c C-v") #'org-mindmap-switch-layout)
     map)
   "Keymap for `org-mindmap-mode'.")
 
@@ -782,15 +801,15 @@ and their vertical connectors."
 
 ;; Register the hooks
 (with-eval-after-load 'org
-  (add-hook 'org-metaup-hook 'org-mindmap--metaup-hook)
-  (add-hook 'org-metadown-hook 'org-mindmap--metadown-hook)
-  (add-hook 'org-metaleft-hook 'org-mindmap--metaleft-hook)
-  (add-hook 'org-metaright-hook 'org-mindmap--metaright-hook)
-  (add-hook 'org-tab-first-hook 'org-mindmap--tab-hook)
-  (add-hook 'org-metareturn-hook 'org-mindmap--metareturn-hook))
+  (add-hook 'org-metaup-hook #'org-mindmap--metaup-hook)
+  (add-hook 'org-metadown-hook #'org-mindmap--metadown-hook)
+  (add-hook 'org-metaleft-hook #'org-mindmap--metaleft-hook)
+  (add-hook 'org-metaright-hook #'org-mindmap--metaright-hook)
+  (add-hook 'org-tab-first-hook #'org-mindmap--tab-hook)
+  (add-hook 'org-metareturn-hook #'org-mindmap--metareturn-hook))
 
 (define-minor-mode org-mindmap-mode
-  "Minor mode for editable mindmaps in org-mode."
+  "Minor mode for editable mindmaps in ‘org-mode’."
   :init-value nil
   :lighter " Mindmap"
   :keymap org-mindmap-mode-map)

@@ -77,7 +77,7 @@ Here is the keys reference:
 ** From a list
 Lists and mindmaps are mostly isomorphic: any list can be transformed to a corresponding mindmap without loss of data (except that bullet types and enumerated lists are not supported for now), and vice versa.
 
-If you have a list, you can transform it to mindmap with =org-list-to-mindmap=:
+If you have a list, you can transform it to mindmap with =org-mindmap-list-to-mindmap=:
 #+begin_src
 - For want of a nail
   - the shoe was lost,
