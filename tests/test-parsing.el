@@ -23,7 +23,7 @@
   (let ((failed 0)
         (passed 0)
         (skipped 0))
-    (with-current-buffer (find-file-noselect "test_mindmaps.org")
+    (with-current-buffer (find-file-noselect "tests/test-parsing.org")
       (goto-char (point-min))
       (while (re-search-forward "^[ \t]*#\\+begin_mindmap" nil t)
         (let* ((region (org-mindmap-parser-get-region))
