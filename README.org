@@ -32,32 +32,32 @@ If you're using Emacs version prior to 29, clone this repo and use this:
 ** From scratch
 Insert a mindmap block via =org-insert-structure-template= with =C-c C-, m=:
 #+begin_src
-\#+begin_mindmap
-\#+end_mindmap
+,#+begin_mindmap
+,#+end_mindmap
 #+end_src
 
 Add one root node. Just write it between the mindmap delimiters:
 #+begin_src
-\#+begin_mindmap
+,#+begin_mindmap
 Root node
-\#+end_mindmap
+,#+end_mindmap
 #+end_src
 
 Add several siblings with =M-RET=, just as you'd do with a list:
 #+begin_src
-#+begin_mindmap
+,#+begin_mindmap
 ┬─ Root node
 ├─ Second node
 ╰─ Third node
-#+end_mindmap
+,#+end_mindmap
 #+end_src
 
 Move them around with =M-<up>=, =M-<down>=, =M-<left>= and =M-<right>=. Put the cursor on the node text and press one of those keys:
 #+begin_src
-#+begin_mindmap
+,#+begin_mindmap
 ┬─ Root node ┬─ Third node
              ╰─ Second node
-#+end_mindmap
+,#+end_mindmap
 #+end_src
 
 Here is the keys reference:
@@ -98,14 +98,14 @@ If you have a list, you can transform it to mindmap with =org-mindmap-list-to-mi
 #+end_src
 
 #+begin_src
-#+begin_mindmap
+,#+begin_mindmap
 ┬─ For want of a nail ── the shoe was lost,
 ├─ For want of a shoe ── the horse was lost,
 ├─ For want of a horse ── the rider was lost,
 ├─ For want of a rider ── the battle was lost,
 ├─ For want of a battle ── the kingdom was lost,
 ╰─ And all for the want ── of horseshoe nail.
-#+end_mindmap
+,#+end_mindmap
 #+end_src
 ... and back to list with =org-mindmap-to-list=.
 
@@ -115,36 +115,36 @@ Mindmaps are only left to right. Two-sided mindmaps are not supported. Formattin
 There are three layouts:
 1. =left=, the simplest and the default one
 #+begin_src 
-#+begin_mindmap :layout left
+,#+begin_mindmap :layout left
 ┬─ root ng ┬─ node b ┬─ node d
 │          │         ├─ node c
 │          │         ╰─ node e ── node f
 │          ╰─ node a
 ╰─ disk c: ┬─ Windows
            ╰─ Users
-#+end_mindmap
+,#+end_mindmap
 #+end_src
 
 2. =compact=, the one where nodes float up if there's space for them (like node a here).
 #+begin_src 
-#+begin_mindmap :layout compact
+,#+begin_mindmap :layout compact
 ┬─ root ng ┬─ node b ┬─ node d
 │          ╰─ node a ├─ node c
 │                    ╰─ node e ── node f
 ╰─ disk c: ┬─ Windows
            ╰─ Users
-#+end_mindmap
+,#+end_mindmap
 #+end_src
 
 3. =centered=, like above, but the root nodes are vertically centered against their children.
 #+begin_src 
-#+begin_mindmap :layout centered
+,#+begin_mindmap :layout centered
                      ╭─ node d
 ┬─ root ng ┬─ node b ┼─ node c
 │          ╰─ node a ╰─ node e ── node f
 ╰─ disk c: ┬─ Windows
            ╰─ Users
-#+end_mindmap
+,#+end_mindmap
 #+end_src
 
 * Examples
