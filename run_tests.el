@@ -29,7 +29,7 @@
         (let* ((region (org-mindmap-get-region))
                (start (car region))
                (end (cdr region))
-               (heading (save-excursion 
+               (heading (save-excursion
                           (if (re-search-backward "^\\* " nil t)
                               (buffer-substring-no-properties (line-beginning-position) (line-end-position))
                             "Unknown Test")))
@@ -37,13 +37,13 @@
                (expected-output nil)
                (expected-start nil)
                (expected-end nil))
-          
+
           ;; Parse map
           (condition-case err
               (let ((roots (org-mindmap-parse-region start end)))
                 (setq actual-output (format-nodes-as-string roots)))
             (error (setq actual-output (format "ERROR: %S\n" err))))
-          
+
           ;; Look for expected block
           (save-excursion
             (goto-char end)
@@ -57,7 +57,7 @@
               (when (re-search-forward "^[ \t]*#\\+end_expected" nil t)
                 (setq expected-end (line-beginning-position))
                 (setq expected-output (buffer-substring-no-properties expected-start expected-end)))))
-                
+
           (if update-snapshots
               (save-excursion
                 (if expected-output
@@ -86,7 +86,7 @@
       (when update-snapshots
         (save-buffer))
       (kill-buffer))
-    
+
     (unless update-snapshots
       (message "\nTests completed: %d passed, %d failed, %d skipped." passed failed skipped)
       (if (> failed 0)
