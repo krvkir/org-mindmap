@@ -8,11 +8,12 @@
     (let ((print-node-fn nil))
       (setq print-node-fn
             (lambda (node indent)
-              (insert (format "%s- %s (row:%d, col:%d)\n"
+              (insert (format "%s- %s (row:%d, col:%d, side:%s)\n"
                               (make-string indent ? )
                               (org-mindmap-parser-node-text node)
                               (org-mindmap-parser-node-row node)
-                              (org-mindmap-parser-node-col node)))
+                              (org-mindmap-parser-node-col node)
+                              (or (org-mindmap-parser-node-side node) "nil")))
               (dolist (child (org-mindmap-parser-node-children node))
                 (funcall print-node-fn child (+ indent 2)))))
       (dolist (root roots)
