@@ -158,7 +158,7 @@
     - disk c: (row:2, col:3)
 #+end_expected
 
-* Test Case 12: Horizontal Recovery Cross-Branch Contamination
+* Test Case 12: Horizontal Recovery Cross-Branch Contamination (Large Map)
 #+begin_mindmap :layout centered
                           ╭─ мышления
                           ├─ изучения

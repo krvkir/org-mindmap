@@ -36,17 +36,22 @@
                (actual-output "")
                (expected-output nil)
                (expected-start nil)
-               (expected-end nil))
+               (expected-end nil)
+               (elapsed 0.0))
 
           ;; Clear debug buffer for each test
           (with-current-buffer (get-buffer-create "*org-mindmap-debug*")
             (erase-buffer))
 
-          ;; Parse map
-          (condition-case err
-              (let ((roots (org-mindmap-parser-parse-region start end)))
-                (setq actual-output (format-nodes-as-string roots)))
-            (error (setq actual-output (format "ERROR: %S\n" err))))
+          ;; Parse map and measure time
+          (let ((start-parse (float-time)))
+            (condition-case err
+                (let ((roots (org-mindmap-parser-parse-region start end)))
+                  (setq elapsed (* 1000.0 (- (float-time) start-parse)))
+                  (setq actual-output (format-nodes-as-string roots)))
+              (error
+               (setq elapsed (* 1000.0 (- (float-time) start-parse)))
+               (setq actual-output (format "ERROR: %S\n" err)))))
 
           ;; Look for expected block
           (save-excursion
@@ -72,7 +77,7 @@
                   (goto-char end)
                   (forward-line 1)
                   (insert "#+begin_expected\n" actual-output "#+end_expected\n"))
-                (message "✎ UPDATED %s" heading))
+                (message "✎ UPDATED %s (%.2fms)" heading elapsed))
             ;; Normal mode
             (if (not expected-output)
                 (progn
@@ -81,10 +86,10 @@
               (if (string= actual-output expected-output)
                   (progn
                     (setq passed (1+ passed))
-                    (message "✓ PASS %s" heading))
+                    (message "✓ PASS %s (%.2fms)" heading elapsed))
                 (progn
                   (setq failed (1+ failed))
-                  (message "✗ FAIL %s" heading)
+                  (message "✗ FAIL %s (%.2fms)" heading elapsed)
                   (message "  --- Expected ---\n%s" expected-output)
                   (message "  --- Actual ---\n%s" actual-output)
                   (with-current-buffer (get-buffer-create "*org-mindmap-debug*")
