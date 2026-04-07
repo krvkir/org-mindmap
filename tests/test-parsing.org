@@ -290,7 +290,7 @@
       - constant (row:0, col:16)
       - size (row:1, col:16)
         - 3 x France (row:1, col:24)
-        - 6 x UK (row:2, col:24)
+        - 6 x UK (row:2, col:19)
       - south (row:3, col:16)
         - Persian Gulf (row:3, col:25)
       - east (row:5, col:16)
@@ -324,7 +324,7 @@
         - mountains of (row:5, col:24)
           - Khurasan (row:4, col:40)
           - Sistan (row:5, col:40)
-          - Baluchestan (row:6, col:40)
+          - Baluchestan (row:6, col:41)
       - west (row:6, col:16)
     - Identity (row:4, col:3)
 #+end_expected

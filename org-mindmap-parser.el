@@ -106,6 +106,7 @@ If `org-mindmap-parser-debug' is t, format FMT with ARGS."
 
 (defun org-mindmap-parser--glue (lines row col dir)
   "Attempt to find a connector that snaps for DIR by drifting horizontally."
+  (org-mindmap-parser--debug "Broken link at (%d, %d). Attempting glue for dir %S." row col dir)
   (when (not (= (cdr dir) 0))
     (let ((found nil))
       (cl-loop for drift from 1 to org-mindmap-parser-recovery-drift
@@ -118,6 +119,9 @@ If `org-mindmap-parser-debug' is t, format FMT with ARGS."
                    (setq found (cons row left-col)))
                   ((org-mindmap-parser--snaps lines row right-col dir)
                    (setq found (cons row (+ col drift)))))))
+      (if found
+          (org-mindmap-parser--debug "Glue success: found snap at (%d, %d)." (car found) (cdr found))
+        (org-mindmap-parser--debug "Glue failed: no snap found within recovery drift."))
       found)))
 
 (defun org-mindmap-parser--consume-spaces (lines row col dir visited)
@@ -155,6 +159,8 @@ If `org-mindmap-parser-debug' is t, format FMT with ARGS."
                         :parent parent
                         :row row
                         :col start-col))))
+          (when node
+            (org-mindmap-parser--debug "Found node: '%s' at (%d, %d)" trimmed row start-col))
           (cons node (cons row curr-col)))))))
 
 (defun org-mindmap-parser--go (lines row col dir parent visited)
@@ -218,6 +224,7 @@ If `org-mindmap-parser-debug' is t, format FMT with ARGS."
         (setq start (car region)
               end (cdr region)))))
   (when (and start end)
+    (org-mindmap-parser--debug "--- Starting parse for region (%d, %d) ---" start end)
     (let ((lines-list nil))
       (save-excursion
         (goto-char start)
@@ -257,6 +264,7 @@ If `org-mindmap-parser-debug' is t, format FMT with ARGS."
           (dolist (root roots)
             (funcall calc-depth root 0)))
         (setq roots (cl-sort (cl-delete-duplicates roots :test (lambda (a b) (and (string= (org-mindmap-parser-node-text a) (org-mindmap-parser-node-text b)) (= (org-mindmap-parser-node-row a) (org-mindmap-parser-node-row b)) (= (org-mindmap-parser-node-col a) (org-mindmap-parser-node-col b))))) #'< :key #'org-mindmap-parser-node-row))
+        (org-mindmap-parser--debug "--- Finished parse. Roots found: %d ---" (length roots))
         roots))))
 
 (provide 'org-mindmap-parser)
