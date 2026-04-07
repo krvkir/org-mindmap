@@ -275,3 +275,56 @@
       - отредактируй (row:26, col:14)
 #+end_expected
 
+* Test Case 13: Horizontal Shift 1
+#+begin_mindmap
+             ╭─ constant
+             ├─ size ┬─ 3 x France
+             │  ╰─ 6 x UK
+┬─ Geography ┼─ south ── Persian Gulf
+╰─ Identity  │                       ╭─ Khurasan
+             ├─ east ── mountains of ┼─ Sistan
+             ╰─ west                 ╰─ Baluchestan
+#+end_mindmap
+#+begin_expected
+    - Geography (row:3, col:3)
+      - constant (row:0, col:16)
+      - size (row:1, col:16)
+        - 3 x France (row:1, col:24)
+        - 6 x UK (row:2, col:24)
+      - south (row:3, col:16)
+        - Persian Gulf (row:3, col:25)
+      - east (row:5, col:16)
+        - mountains of (row:5, col:24)
+          - Khurasan (row:4, col:40)
+          - Sistan (row:5, col:40)
+          - Baluchestan (row:6, col:40)
+      - west (row:6, col:16)
+    - Identity (row:4, col:3)
+#+end_expected
+
+* Test Case 14: Horizontal Shift 2
+#+begin_mindmap
+             ╭─ constant
+             ├─ size ┬─ 3 x France
+             │       ╰─ 6 x UK
+┬─ Geography ┼─ south ── Persian Gulf
+╰─ Identity  │                       ╭─ Khurasan
+             ├─ east ── mountains of ┼─ Sistan
+             ╰─ west                  ╰─ Baluchestan
+#+end_mindmap
+#+begin_expected
+    - Geography (row:3, col:3)
+      - constant (row:0, col:16)
+      - size (row:1, col:16)
+        - 3 x France (row:1, col:24)
+        - 6 x UK (row:2, col:24)
+      - south (row:3, col:16)
+        - Persian Gulf (row:3, col:25)
+      - east (row:5, col:16)
+        - mountains of (row:5, col:24)
+          - Khurasan (row:4, col:40)
+          - Sistan (row:5, col:40)
+          - Baluchestan (row:6, col:40)
+      - west (row:6, col:16)
+    - Identity (row:4, col:3)
+#+end_expected
