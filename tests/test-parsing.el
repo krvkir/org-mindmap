@@ -38,6 +38,10 @@
                (expected-start nil)
                (expected-end nil))
 
+          ;; Clear debug buffer for each test
+          (with-current-buffer (get-buffer-create "*org-mindmap-debug*")
+            (erase-buffer))
+
           ;; Parse map
           (condition-case err
               (let ((roots (org-mindmap-parser-parse-region start end)))
@@ -82,7 +86,9 @@
                   (setq failed (1+ failed))
                   (message "✗ FAIL %s" heading)
                   (message "  --- Expected ---\n%s" expected-output)
-                  (message "  --- Actual ---\n%s" actual-output)))))))
+                  (message "  --- Actual ---\n%s" actual-output)
+                  (with-current-buffer (get-buffer-create "*org-mindmap-debug*")
+                    (princ (buffer-string)))))))))
       (when update-snapshots
         (save-buffer))
       (kill-buffer))
