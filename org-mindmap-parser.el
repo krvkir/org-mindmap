@@ -35,7 +35,7 @@
 
 (cl-defstruct (org-mindmap-parser-node (:constructor org-mindmap-parser-make-node))
   "Data structure representing a single mindmap node."
-  id text children depth parent row col side)
+  id text children depth parent row col width side)
 
 (defcustom org-mindmap-parser-debug nil
   "If non-nil, print debug information to the *org-mindmap-debug* buffer."
@@ -48,7 +48,8 @@
   :group 'org-mindmap)
 
 (defcustom org-mindmap-parser-root-delimiters '("◀" . "▶")
-  "A cons cell containing the left and right delimiter strings for an explicit root node."
+  "A cons cell containing the left and right delimiter strings for a root node.
+Use symbols you don't directly type, such as unicode plotting character."
   :type '(cons string string)
   :group 'org-mindmap)
 
@@ -59,7 +60,9 @@ If `org-mindmap-parser-debug' is t, format FMT with ARGS."
   (when org-mindmap-parser-debug
     (with-current-buffer (get-buffer-create "*org-mindmap-debug*")
       (goto-char (point-max))
-      (insert (apply #'format fmt args) "\n"))))
+      (insert (apply #'format fmt args) "\n"))
+    nil))
+
 ;; Directions
 (defconst org-mindmap-parser-dir-up    '(0 . -1))
 (defconst org-mindmap-parser-dir-down  '(0 . 1))
@@ -71,17 +74,17 @@ If `org-mindmap-parser-debug' is t, format FMT with ARGS."
     (puthash ?─ (list org-mindmap-parser-dir-left org-mindmap-parser-dir-right) table)
     (puthash ?│ (list org-mindmap-parser-dir-up org-mindmap-parser-dir-down) table)
     (puthash ?┬ (list org-mindmap-parser-dir-left org-mindmap-parser-dir-right org-mindmap-parser-dir-down) table)
-    (puthash ?┴ (list org-mindmap-parser-dir-left org-mindmap-parser-dir-right org-mindmap-parser-dir-up) table)
-    (puthash ?├ (list org-mindmap-parser-dir-up org-mindmap-parser-dir-down org-mindmap-parser-dir-right) table)
-    (puthash ?┤ (list org-mindmap-parser-dir-up org-mindmap-parser-dir-down org-mindmap-parser-dir-left) table)
-    (puthash ?┼ (list org-mindmap-parser-dir-up org-mindmap-parser-dir-down org-mindmap-parser-dir-left org-mindmap-parser-dir-right) table)
-    (puthash ?╭ (list org-mindmap-parser-dir-down org-mindmap-parser-dir-right) table)
-    (puthash ?╮ (list org-mindmap-parser-dir-down org-mindmap-parser-dir-left) table)
+    (puthash ?┴ (list org-mindmap-parser-dir-left org-mindmap-parser-dir-up org-mindmap-parser-dir-right) table)
+    (puthash ?├ (list org-mindmap-parser-dir-up org-mindmap-parser-dir-right org-mindmap-parser-dir-down) table)
+    (puthash ?┤ (list org-mindmap-parser-dir-left org-mindmap-parser-dir-up org-mindmap-parser-dir-down) table)
+    (puthash ?┼ (list org-mindmap-parser-dir-left org-mindmap-parser-dir-up org-mindmap-parser-dir-right org-mindmap-parser-dir-down) table)
+    (puthash ?╭ (list org-mindmap-parser-dir-right org-mindmap-parser-dir-down) table)
+    (puthash ?╮ (list org-mindmap-parser-dir-left org-mindmap-parser-dir-down) table)
     (puthash ?╰ (list org-mindmap-parser-dir-up org-mindmap-parser-dir-right) table)
     (puthash ?╯ (list org-mindmap-parser-dir-up org-mindmap-parser-dir-left) table)
     ;; DOS equivalents
-    (puthash ?┌ (list org-mindmap-parser-dir-down org-mindmap-parser-dir-right) table)
-    (puthash ?┐ (list org-mindmap-parser-dir-down org-mindmap-parser-dir-left) table)
+    (puthash ?┌ (list org-mindmap-parser-dir-right org-mindmap-parser-dir-down) table)
+    (puthash ?┐ (list org-mindmap-parser-dir-left org-mindmap-parser-dir-down) table)
     (puthash ?└ (list org-mindmap-parser-dir-up org-mindmap-parser-dir-right) table)
     (puthash ?┘ (list org-mindmap-parser-dir-up org-mindmap-parser-dir-left) table)
     table))
@@ -92,11 +95,22 @@ If `org-mindmap-parser-debug' is t, format FMT with ARGS."
 
 (defun org-mindmap-parser--is-connector (char)
   "Return non-nil if CHAR is a recognized connector character."
-  (and char (gethash char org-mindmap-parser-ports)))
+  (and char
+       (or (gethash char org-mindmap-parser-ports)
+           (string= (char-to-string char) (car org-mindmap-parser-root-delimiters))
+           (string= (char-to-string char) (cdr org-mindmap-parser-root-delimiters)))))
 
 (defun org-mindmap-parser--is-whitespace (char)
   "Return non-nil if CHAR is whitespace or null."
   (or (null char) (= char ?\s) (= char ?\t)))
+
+(defun org-mindmap-parser--dirs (char)
+  "Return entry ports for a CHAR."
+  (when (org-mindmap-parser--is-connector char)
+    (if (or (string= (char-to-string char) (car org-mindmap-parser-root-delimiters))
+            (string= (char-to-string char) (cdr org-mindmap-parser-root-delimiters)))
+        (list org-mindmap-parser-dir-left org-mindmap-parser-dir-right)
+      (gethash char org-mindmap-parser-ports))))
 
 (defun org-mindmap-parser--grid-get (lines row col)
   "Safely fetch a character from 2D array of strings LINES at ROW and COL."
@@ -109,11 +123,9 @@ If `org-mindmap-parser-debug' is t, format FMT with ARGS."
 
 (defun org-mindmap-parser--snaps (lines row col dir)
   "Return t if char at ROW, COL accepts entry from DIR."
-  (let ((char (org-mindmap-parser--grid-get lines row col)))
-    (when (org-mindmap-parser--is-connector char)
-      (let ((entry-port (org-mindmap-parser--invert-dir dir))
-            (ports (gethash char org-mindmap-parser-ports)))
-        (member entry-port ports)))))
+  (let ((char (org-mindmap-parser--grid-get lines row col))
+        (entry-port (org-mindmap-parser--invert-dir dir)))
+    (member entry-port (org-mindmap-parser--dirs char))))
 
 (defun org-mindmap-parser--glue (lines row col dir)
   "Attempt to find a connector that snaps for DIR by drifting horizontally."
@@ -155,6 +167,7 @@ SIDE is assigned to the created node."
          (chars nil)
          (start-col (org-mindmap-parser--consume-spaces lines row col dir visited))
          (curr-col start-col))
+    (org-mindmap-parser--debug "Looking for a node at (%d, %d)" row start-col)
     (if (= dx 0)
         (cons nil (cons row col))
       (let (char)
@@ -171,49 +184,48 @@ SIDE is assigned to the created node."
                         :id (cl-gensym "node")
                         :text trimmed
                         :parent parent
+                        :depth (if parent (1+ (org-mindmap-parser-node-depth parent)) 0)
                         :row row
                         :col leftmost-col
+                        :width (abs (- curr-col col))
                         :side side))))
           (when node
-            (org-mindmap-parser--debug "Found node: '%s' at (%d, %d)" trimmed row leftmost-col))
+            (org-mindmap-parser--debug "Found node: '%s' at (%d, %d)" trimmed row leftmost-col)
+            (when parent
+              (push node (org-mindmap-parser-node-children parent))))
           (cons node (cons row curr-col)))))))
 
 (defun org-mindmap-parser--go (lines row col dir parent visited side)
   "Recursive 2D walker following connectors and nodes."
-  (let ((res nil))
-    (when (and (not (gethash (+ (* row 1000) col) visited))
-               (org-mindmap-parser--grid-get lines row col))
-      (puthash (+ (* row 1000) col) t visited)
-      (let* ((char (org-mindmap-parser--grid-get lines row col))
-             (pdirs (gethash char org-mindmap-parser-ports)))
-        (dolist (pdir pdirs)
-          (unless (equal pdir (org-mindmap-parser--invert-dir dir))
-            (let* ((prow (+ row (cdr pdir)))
-                   (pcol (+ col (car pdir)))
-                   (next-side (or side (if (< (car pdir) 0) 'left 'right))))
+  (cond
+   ((gethash (+ (* row 1000) col) visited)
+    (org-mindmap-parser--debug "Stumbled on visited cell at (%d, %d)" row col))
+   ((not (org-mindmap-parser--grid-get lines row col))
+    (org-mindmap-parser--debug "Reached boundaries at (%d, %d)" row col))
+   (t (let* ((char (org-mindmap-parser--grid-get lines row col))
+             (possible-dirs (org-mindmap-parser--dirs char)))
+        (puthash (+ (* row 1000) col) t visited)
+        (org-mindmap-parser--debug "On char %c at (%d, %d), considering dirs: %s" char row col possible-dirs)
+        (dolist (possible-dir possible-dirs)
+          (unless (equal possible-dir (org-mindmap-parser--invert-dir dir))
+            (let* ((prow (+ row (cdr possible-dir)))
+                   (pcol (+ col (car possible-dir)))
+                   (next-side (or side (if (< (car possible-dir) 0) 'left 'right))))
               (cond
-               ((org-mindmap-parser--snaps lines prow pcol pdir)
-                (setq res (append res (org-mindmap-parser--go lines prow pcol pdir parent visited next-side))))
-               ((= (cdr pdir) 0)
-                (let* ((node-res (org-mindmap-parser--consume-node lines prow pcol pdir parent visited next-side))
+               ((org-mindmap-parser--snaps lines prow pcol possible-dir)
+                (org-mindmap-parser--go lines prow pcol possible-dir parent visited next-side))
+               ((= (cdr possible-dir) 0)
+                (let* ((node-res (org-mindmap-parser--consume-node lines prow pcol possible-dir parent visited next-side))
                        (new-node (car node-res))
                        (nxt (cdr node-res))
                        (nxt-row (car nxt))
                        (nxt-col (cdr nxt)))
-                  (if (org-mindmap-parser--snaps lines nxt-row nxt-col pdir)
-                      (let ((children (org-mindmap-parser--go lines nxt-row nxt-col pdir (or new-node parent) visited next-side)))
-                        (if new-node
-                            (progn
-                              (setf (org-mindmap-parser-node-children new-node) children)
-                              (dolist (child children) (setf (org-mindmap-parser-node-parent child) new-node))
-                              (push new-node res))
-                          (setq res (append res children))))
-                    (when new-node (push new-node res)))))
+                  (if (org-mindmap-parser--snaps lines nxt-row nxt-col possible-dir)
+                      (org-mindmap-parser--go lines nxt-row nxt-col possible-dir (or new-node parent) visited next-side))))
                (t
-                (let ((glued (org-mindmap-parser--glue lines prow pcol pdir)))
+                (let ((glued (org-mindmap-parser--glue lines prow pcol possible-dir)))
                   (when glued
-                    (setq res (append res (org-mindmap-parser--go lines (car glued) (cdr glued) pdir parent visited next-side)))))))))))
-      res)))
+                    (org-mindmap-parser--go lines (car glued) (cdr glued) possible-dir parent visited next-side))))))))))))
 
 (defun org-mindmap-parser-get-region ()
   "Detect #+begin_mindmap and #+end_mindmap boundaries around point."
@@ -231,6 +243,75 @@ SIDE is assigned to the created node."
 (defun org-mindmap-parser-region-active-p ()
   "Check if cursor is inside a mindmap region."
   (not (null (org-mindmap-parser-get-region))))
+
+(defun org-mindmap-parser--find-explicit-root (lines)
+  "Find an explicit root in LINES."
+  (let ((explicit-root nil)
+        (left-delim (car org-mindmap-parser-root-delimiters))
+        (right-delim (cdr org-mindmap-parser-root-delimiters))
+        (height (length lines)))
+    (cl-loop for row from 0 to (1- height)
+             until explicit-root
+             do
+             (let ((line (aref lines row)))
+               (when (string-match (concat (regexp-quote left-delim) "\\(.*?\\)" (regexp-quote right-delim)) line)
+                 (let ((col-start (match-beginning 0))
+                       (col-end (match-end 0))
+                       (text (string-trim (match-string 1 line))))
+                   (org-mindmap-parser--debug "Found explicit root node: %s at (%d, %d)" text row col-start)
+                   (setq explicit-root (org-mindmap-parser-make-node
+                                        :id (cl-gensym "node")
+                                        :text text
+                                        :depth 0
+                                        :row row
+                                        :col col-start
+                                        :width (1+ (- col-end col-start))
+                                        :side nil))))))
+    explicit-root))
+
+(defun org-mindmap-parser--find-implicit-root (lines visited)
+  "Find an implicit root in LINES."
+  (let ((height (length lines))
+        (implicit-conn-root nil)
+        (implicit-text-root nil))
+    ;; TODO iterate columns to skip empty initial columns
+    (org-mindmap-parser--debug "Starting implicit root search")
+    (cl-loop for row from 0 to (1- height)
+             until (or implicit-conn-root implicit-text-root)
+             do
+             (let ((char (org-mindmap-parser--grid-get lines row 0)))
+               (when (and char (not (org-mindmap-parser--is-whitespace char)))
+                 (if (org-mindmap-parser--is-connector char)
+                     (setq implicit-conn-root (list row 0))
+                   (setq implicit-text-root (list row 0))))))
+    (cond
+     (implicit-text-root
+      (let* ((r (car implicit-text-root))
+             (c (cadr implicit-text-root))
+             (node-res (org-mindmap-parser--consume-node lines r c org-mindmap-parser-dir-right nil visited nil))
+             (node (car node-res))
+             (nxt (cdr node-res)))
+        node))
+     (implicit-conn-root
+      (let ((r (car implicit-conn-root))
+            (c (cadr implicit-conn-root)))
+        (org-mindmap-parser-make-node
+         :id (cl-gensym "node")
+         :text ""
+         :depth 0
+         :row r
+         :col c
+         :width 0
+         :side nil)))
+     (t nil))))
+
+(defun org-mindmap-parser--sort-tree (node)
+  "Return the right order to the NODE children recursively."
+  (setf (org-mindmap-parser-node-children node)
+        (cl-sort (org-mindmap-parser-node-children node)
+                 #'< :key #'org-mindmap-parser-node-row))
+  (dolist (child (org-mindmap-parser-node-children node))
+    (org-mindmap-parser--sort-tree child)))
 
 (defun org-mindmap-parser-parse-region (&optional start end)
   "Parse mindmap within START to END into a tree structure."
@@ -253,98 +334,29 @@ SIDE is assigned to the created node."
              (height (length lines))
              (max-width (if (> height 0) (apply #'max (mapcar #'length lines)) 0))
              (visited (make-hash-table :test 'eq))
-             (left-delim (car org-mindmap-parser-root-delimiters))
-             (right-delim (cdr org-mindmap-parser-root-delimiters))
-             (explicit-root nil)
-             (implicit-text-root nil)
-             (implicit-conn-root nil)
-             (roots nil))
-
-        ;; Find root
-        (cl-loop for row from 0 to (1- height) until explicit-root do
-                 (let ((line (aref lines row)))
-                   (when (string-match (concat (regexp-quote left-delim) "\\(.*?\\)" (regexp-quote right-delim)) line)
-                     (let ((col-start (match-beginning 0))
-                           (col-end (match-end 0))
-                           (text (string-trim (match-string 1 line))))
-                       (setq explicit-root (list row col-start col-end text))))))
-
-        (unless explicit-root
-          (cl-loop for row from 0 to (1- height) do
-                   (let ((char (org-mindmap-parser--grid-get lines row 0)))
-                     (when (and char (not (org-mindmap-parser--is-whitespace char)))
-                       (if (org-mindmap-parser--is-connector char)
-                           (unless implicit-conn-root (setq implicit-conn-root (list row 0)))
-                         (unless implicit-text-root (setq implicit-text-root (list row 0))))))))
-
-        (let* ((root-info
-                (cond
-                 (explicit-root
-                  (cl-destructuring-bind (r cs ce text) explicit-root
-                    (list r cs ce text)))
-                 (implicit-text-root
-                  (let* ((r (car implicit-text-root))
-                         (c (cadr implicit-text-root))
-                         (node-res (org-mindmap-parser--consume-node lines r c org-mindmap-parser-dir-right nil visited nil))
-                         (node (car node-res))
-                         (nxt (cdr node-res)))
-                    (list r c (cdr nxt) (if node (org-mindmap-parser-node-text node) ""))))
-                 (implicit-conn-root
-                  (let ((r (car implicit-conn-root))
-                        (c (cadr implicit-conn-root)))
-                    (list r c c "")))
-                 (t nil)))
-               (root-node (when root-info
-                            (cl-destructuring-bind (r cs ce text) root-info
-                              (org-mindmap-parser-make-node
-                               :id (cl-gensym "node")
-                               :text text
-                               :row r
-                               :col cs
-                               :side nil)))))
-          (when root-node
-            (cl-destructuring-bind (r cs ce text) root-info
-              ;; Go left
-              (when (> cs 0)
-                (let ((l-col (1- cs))
-                      (l-char nil))
-                  (while (and (>= l-col 0)
-                              (setq l-char (org-mindmap-parser--grid-get lines r l-col))
-                              (not (org-mindmap-parser--is-connector l-char)))
-                    (cl-decf l-col))
-                  (when (and (>= l-col 0) (org-mindmap-parser--is-connector l-char))
-                    (let ((left-children (org-mindmap-parser--go lines r l-col org-mindmap-parser-dir-left root-node visited 'left)))
-                      (setf (org-mindmap-parser-node-children root-node)
-                            (append left-children (org-mindmap-parser-node-children root-node)))
-                      (dolist (child left-children) (setf (org-mindmap-parser-node-parent child) root-node))))))
-              ;; Go right
-              (let ((r-col ce)
-                    (r-char nil))
-                (while (and (< r-col max-width)
-                            (setq r-char (org-mindmap-parser--grid-get lines r r-col))
-                            (not (org-mindmap-parser--is-connector r-char)))
-                  (cl-incf r-col))
-                (when (and (< r-col max-width) (org-mindmap-parser--is-connector r-char))
-                  (let ((right-children (org-mindmap-parser--go lines r r-col org-mindmap-parser-dir-right root-node visited 'right)))
-                    (setf (org-mindmap-parser-node-children root-node)
-                          (append (org-mindmap-parser-node-children root-node) right-children))
-                    (dolist (child right-children) (setf (org-mindmap-parser-node-parent child) root-node)))))
-              (setq roots (list root-node)))))
-
-        (let ((calc-depth nil))
-          (setq calc-depth
-                (lambda (node d side)
-                  (setf (org-mindmap-parser-node-depth node) d)
-                  (unless (null (org-mindmap-parser-node-side node))
-                    (setf (org-mindmap-parser-node-side node) side))
-                  (setf (org-mindmap-parser-node-children node)
-                        (cl-sort (org-mindmap-parser-node-children node) #'< :key #'org-mindmap-parser-node-row))
-                  (dolist (child (org-mindmap-parser-node-children node))
-                    (funcall calc-depth child (1+ d) (or (org-mindmap-parser-node-side child) side)))))
-          (dolist (root roots)
-            (funcall calc-depth root 0 (org-mindmap-parser-node-side root))))
-        (org-mindmap-parser--debug "--- Finished parse. Roots found: %d ---" (length roots))
-        roots))))
+             (explicit-root (org-mindmap-parser--find-explicit-root lines))
+             (root-node
+              (cond
+               (explicit-root explicit-root)
+               (t (org-mindmap-parser--find-implicit-root lines visited)))))
+        (if root-node
+            (let* ((row (org-mindmap-parser-node-row root-node))
+                   (col-start (org-mindmap-parser-node-col root-node))
+                   (width (org-mindmap-parser-node-width root-node))
+                   (col-end (+ col-start width)))
+              (when (< col-end max-width)
+                ;; Go right
+                (org-mindmap-parser--debug "Going right")
+                (org-mindmap-parser--go lines row col-end org-mindmap-parser-dir-right root-node visited 'right))
+              (when (> col-start 0)
+                ;; Go left
+                (org-mindmap-parser--debug "Going left")
+                (org-mindmap-parser--go lines row col-start org-mindmap-parser-dir-left root-node visited 'left))
+              (org-mindmap-parser--sort-tree root-node)
+              (org-mindmap-parser--debug "--- Finished parse. Root found. ---")
+              (list root-node))
+          (org-mindmap-parser--debug "--- Finished parse. Root not found. ---")
+          nil)))))
 
 (provide 'org-mindmap-parser)
 ;;; org-mindmap-parser.el ends here

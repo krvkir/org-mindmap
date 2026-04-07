@@ -256,11 +256,8 @@
               - точно (row:22, col:65, side:right)
               - ясно (row:23, col:65, side:right)
               - кратко (row:24, col:65, side:right)
-            - преврати в черновик (row:25, col:13, side:right)
             - выбрось (row:25, col:46, side:right)
               - мимолётные (row:25, col:57, side:right)
-            - отредактируй (row:26, col:13, side:right)
-              - преврати в черновик (row:25, col:14, side:right)
             - добавь (row:26, col:46, side:right)
               - позади заметки, к которой относится напрямую (row:26, col:56, side:right)
               - ссылки (row:27, col:56, side:right)
@@ -286,6 +283,8 @@
               - следуй за интересом (row:38, col:67, side:right)
               - выбирай путь, который (row:39, col:67, side:right)
                 - обещает больше идей (row:39, col:92, side:right)
+        - преврати в черновик (row:25, col:14, side:right)
+        - отредактируй (row:26, col:14, side:right)
 #+end_expected
 
 * Test Case 13: Horizontal Shift 1
@@ -358,9 +357,9 @@
 #+begin_mindmap
                           ╭─ constant
                           ├─ size ┬─ 3 x France
-  One ─┐                  │       ╰─ 6 x UK
-  Two ─┤─ ◀▶ ┬─ Geography ┼─ south ── Persian Gulf
-Three ─┘     ╰─ Identity  │                       ╭─ Khurasan
+   One ─┐                 │       ╰─ 6 x UK
+  Two ──┼ ◀▶ ┬─ Geography ┼─ south ── Persian Gulf
+ Three ─┘    ╰─ Identity  │                       ╭─ Khurasan
                           ├─ east ── mountains of ┼─ Sistan
                           ╰─ west                 ╰─ Baluchestan
 #+end_mindmap
@@ -390,7 +389,7 @@ Three ─┘     ╰─ Identity  │                       ╭─ Khurasan
                                 ╭─ constant
                                 ├─ size ┬─ 3 x France
   One ─┐                        │       ╰─ 6 x UK
-  Two ─┤─ ◀ Iran ▶ ┬─ Geography ┼─ south ── Persian Gulf
+  Two ─┼─ ◀ Iran ▶ ┬─ Geography ┼─ south ── Persian Gulf
 Three ─┘           ╰─ Identity  │                       ╭─ Khurasan
                                 ├─ east ── mountains of ┼─ Sistan
                                 ╰─ west                 ╰─ Baluchestan
