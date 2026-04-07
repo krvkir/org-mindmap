@@ -4,6 +4,7 @@ test:
 	emacs -batch -L . -f batch-byte-compile org-mindmap-parser.el org-mindmap.el
 	emacs -batch -L . -l tests/test-parsing.el
 	emacs -batch -L . -l tests/test-editing.el -f ert-run-tests-batch-and-exit
+	emacs -batch -L . -l tests/benchmark.el
 
 update-test-results:
 	emacs -batch -L . -f batch-byte-compile org-mindmap-parser.el org-mindmap.el

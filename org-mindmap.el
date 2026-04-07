@@ -782,58 +782,69 @@ Uses INDENT for the level."
     (define-key map (kbd "C-c C-r") #'org-mindmap-insert-root)
     (define-key map (kbd "C-c C-d") #'org-mindmap-delete-node)
     (define-key map (kbd "C-c C-v") #'org-mindmap-switch-layout)
-    (define-key map (kbd "M-S-<return>") (lambda () (interactive) (org-mindmap-insert-child "")))
-    (define-key map (kbd "M-S-RET") (lambda () (interactive) (org-mindmap-insert-child "")))
-    (define-key map (kbd "<return>") #'org-mindmap-edit-node)
-    (define-key map (kbd "RET") #'org-mindmap-edit-node)
+    (define-key map (kbd "RET") (lambda () (interactive) (org-mindmap-insert-sibling "")))
+    (define-key map (kbd "<return>") (lambda () (interactive) (org-mindmap-insert-sibling "")))
     map)
   "Keymap for `org-mindmap-mode'.")
 
-(defun org-mindmap--metaup-hook ()
+(defun org-mindmap--move-up ()
   "Hijack M-<up> if inside a mindmap region."
   (when (org-mindmap-parser-region-active-p)
     (org-mindmap-move-up)
     t))
 
-(defun org-mindmap--metadown-hook ()
+(defun org-mindmap--move-down ()
   "Hijack M-<down> if inside a mindmap region."
   (when (org-mindmap-parser-region-active-p)
     (org-mindmap-move-down)
     t))
 
-(defun org-mindmap--metaleft-hook ()
+(defun org-mindmap--promote ()
   "Hijack M-<left> if inside a mindmap region."
   (when (org-mindmap-parser-region-active-p)
     (org-mindmap-promote)
     t))
 
-(defun org-mindmap--metaright-hook ()
+(defun org-mindmap--demote ()
   "Hijack M-<right> if inside a mindmap region."
   (when (org-mindmap-parser-region-active-p)
     (org-mindmap-demote)
     t))
 
-(defun org-mindmap--tab-hook ()
+(defun org-mindmap--align ()
   "Hijack TAB if inside a mindmap region and auto-align is enabled."
   (when (and org-mindmap-auto-align (org-mindmap-parser-region-active-p))
     (org-mindmap-align)
     t))
 
-(defun org-mindmap--metareturn-hook ()
+(defun org-mindmap--insert-sibling ()
   "Hijack M-RET if inside a mindmap region."
   (when (org-mindmap-parser-region-active-p)
     (org-mindmap-insert-sibling)
     t))
 
+(defun org-mindmap--insert-child ()
+  "Hijack M-RET if inside a mindmap region."
+  (when (org-mindmap-parser-region-active-p)
+    (org-mindmap-insert-child)
+    t))
+
+(defun org-mindmap--edit-node ()
+  "Hijack M-RET if inside a mindmap region."
+  (when (org-mindmap-parser-region-active-p)
+    (org-mindmap-edit-node)
+    t))
+
 ;; Register the hooks
 (defun org-mindmap--register-hooks ()
   "Register org-mindmap hooks into `org-mode'."
-  (add-hook 'org-metaup-hook #'org-mindmap--metaup-hook)
-  (add-hook 'org-metadown-hook #'org-mindmap--metadown-hook)
-  (add-hook 'org-metaleft-hook #'org-mindmap--metaleft-hook)
-  (add-hook 'org-metaright-hook #'org-mindmap--metaright-hook)
-  (add-hook 'org-tab-first-hook #'org-mindmap--tab-hook)
-  (add-hook 'org-metareturn-hook #'org-mindmap--metareturn-hook))
+  (add-hook 'org-metaup-hook #'org-mindmap--move-up)
+  (add-hook 'org-metadown-hook #'org-mindmap--move-down)
+  (add-hook 'org-metaleft-hook #'org-mindmap--promote)
+  (add-hook 'org-metaright-hook #'org-mindmap--demote)
+  (add-hook 'org-tab-first-hook #'org-mindmap--insert-child)
+  (add-hook 'org-metareturn-hook #'org-mindmap--edit-node)
+  (add-hook 'org-ctrl-c-ctrl-c-hook #'org-mindmap--align))
 
 (org-mindmap--register-hooks)
 
