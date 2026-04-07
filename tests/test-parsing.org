@@ -7,12 +7,13 @@
         ╰─ Node E
 #+end_mindmap
 #+begin_expected
-    - Root (row:0, col:3, side:right)
-      - Node A (row:0, col:11, side:right)
-      - Node B (row:1, col:11, side:right)
-        - Node C (row:1, col:21, side:right)
-        - Node D (row:2, col:21, side:right)
-      - Node E (row:3, col:11, side:right)
+    -  (row:0, col:0, side:nil)
+      - Root (row:0, col:3, side:right)
+        - Node A (row:0, col:11, side:right)
+        - Node B (row:1, col:11, side:right)
+          - Node C (row:1, col:21, side:right)
+          - Node D (row:2, col:21, side:right)
+        - Node E (row:3, col:11, side:right)
 #+end_expected
 
 * Test Case 2: Multiple Roots
@@ -21,10 +22,11 @@
 ╰─ Second Root ── Child 2
 #+end_mindmap
 #+begin_expected
-    - First Root (row:0, col:3, side:right)
-      - Child 1 (row:0, col:17, side:right)
-    - Second Root (row:1, col:3, side:right)
-      - Child 2 (row:1, col:18, side:right)
+    -  (row:0, col:0, side:nil)
+      - First Root (row:0, col:3, side:right)
+        - Child 1 (row:0, col:17, side:right)
+      - Second Root (row:1, col:3, side:right)
+        - Child 2 (row:1, col:18, side:right)
 #+end_expected
 
 * Test Case 3: Broken Connectors (Recovery Test)
@@ -34,10 +36,11 @@
 ╰─ Root 2    ── Spaced Child
 #+end_mindmap
 #+begin_expected
-    - Root (row:0, col:3, side:right)
-      - Gap Child (row:0, col:12, side:right)
-    - Root 2 (row:2, col:3, side:right)
-      - Spaced Child (row:2, col:16, side:right)
+    -  (row:0, col:0, side:nil)
+      - Root (row:0, col:3, side:right)
+        - Gap Child (row:0, col:12, side:right)
+      - Root 2 (row:2, col:3, side:right)
+        - Spaced Child (row:2, col:16, side:right)
 #+end_expected
 
 * Test Case 4: Ambiguous Text (Hyphens and Pipes)
@@ -46,10 +49,11 @@
 ╰─ [DONE] | Pipe-Node ── Final
 #+end_mindmap
 #+begin_expected
-    - Task-1 (row:0, col:3, side:right)
-      - Sub-Task-A (row:0, col:13, side:right)
-    - [DONE] | Pipe-Node (row:1, col:3, side:right)
-      - Final (row:1, col:25, side:right)
+    -  (row:0, col:0, side:nil)
+      - Task-1 (row:0, col:3, side:right)
+        - Sub-Task-A (row:0, col:13, side:right)
+      - [DONE] | Pipe-Node (row:1, col:3, side:right)
+        - Final (row:1, col:25, side:right)
 #+end_expected
 
 * Test Case 5: Centered/Complex Branching
@@ -59,10 +63,11 @@
   ╰─ Down
 #+end_mindmap
 #+begin_expected
-    - Up (row:0, col:5, side:right)
-    - Middle (row:1, col:5, side:right)
-      - Right (row:1, col:15, side:right)
-    - Down (row:2, col:5, side:right)
+    -  (row:1, col:0, side:nil)
+      - Up (row:0, col:5, side:right)
+      - Middle (row:1, col:5, side:right)
+        - Right (row:1, col:15, side:right)
+      - Down (row:2, col:5, side:right)
 #+end_expected
 
 * Test Case 6: The "Glued" Problem (Original issue)
@@ -75,14 +80,15 @@
         ╰─ d
 #+end_mindmap
 #+begin_expected
-    - root (row:0, col:3, side:right)
-      - a (row:0, col:11, side:right)
-        - e (row:0, col:16, side:right)
-        - f (row:1, col:16, side:right)
-        - g (row:2, col:16, side:right)
-      - b (row:3, col:11, side:right)
-      - c (row:4, col:11, side:right)
-      - d (row:5, col:11, side:right)
+    -  (row:0, col:0, side:nil)
+      - root (row:0, col:3, side:right)
+        - a (row:0, col:11, side:right)
+          - e (row:0, col:16, side:right)
+          - f (row:1, col:16, side:right)
+          - g (row:2, col:16, side:right)
+        - b (row:3, col:11, side:right)
+        - c (row:4, col:11, side:right)
+        - d (row:5, col:11, side:right)
 #+end_expected
 
 * Test Case 7: Dead End / Incomplete
@@ -91,8 +97,9 @@
         ╰─ Child
 #+end_mindmap
 #+begin_expected
-    - Root (row:0, col:3, side:right)
-      - Child (row:1, col:11, side:right)
+    -  (row:0, col:0, side:nil)
+      - Root (row:0, col:3, side:right)
+        - Child (row:1, col:11, side:right)
 #+end_expected
 
 * Test Case 8: Vertical Shift Recovery
@@ -105,14 +112,15 @@
         ╰─ d
 #+end_mindmap
 #+begin_expected
-    - rot (row:0, col:3, side:right)
-      - abc (row:0, col:10, side:right)
-        - e (row:0, col:17, side:right)
-        - f (row:1, col:16, side:right)
-        - g (row:2, col:16, side:right)
-      - b (row:3, col:11, side:right)
-      - c (row:4, col:11, side:right)
-      - d (row:5, col:11, side:right)
+    -  (row:0, col:0, side:nil)
+      - rot (row:0, col:3, side:right)
+        - abc (row:0, col:10, side:right)
+          - e (row:0, col:17, side:right)
+          - f (row:1, col:16, side:right)
+          - g (row:2, col:16, side:right)
+        - b (row:3, col:11, side:right)
+        - c (row:4, col:11, side:right)
+        - d (row:5, col:11, side:right)
 #+end_expected
 
 * Test Case 9: Horizontal Shift Recovery
@@ -122,9 +130,10 @@
           ╰─ shifted child2
 #+end_mindmap
 #+begin_expected
-    - root (row:0, col:3, side:right)
-      - child1 (row:0, col:11, side:right)
-      - shifted child2 (row:2, col:13, side:right)
+    -  (row:0, col:0, side:nil)
+      - root (row:0, col:3, side:right)
+        - child1 (row:0, col:11, side:right)
+        - shifted child2 (row:2, col:13, side:right)
 #+end_expected
 
 * Test Case 10: Disconnected Subtrees (Large Gap)
@@ -136,9 +145,10 @@
         ╰─ child2
 #+end_mindmap
 #+begin_expected
-    - root (row:0, col:3, side:right)
-      - child1 (row:0, col:11, side:right)
-      - child2 (row:4, col:11, side:right)
+    -  (row:0, col:0, side:nil)
+      - root (row:0, col:3, side:right)
+        - child1 (row:0, col:11, side:right)
+        - child2 (row:4, col:11, side:right)
 #+end_expected
 
 * Test Case 11: Centered Map
@@ -148,14 +158,15 @@
 ╰─ disk c: ╰─ node a ╰─ node e ── node f
 #+end_mindmap
 #+begin_expected
-    - root ng (row:1, col:3, side:right)
-      - node b (row:1, col:14, side:right)
-        - node d (row:0, col:24, side:right)
-        - node c (row:1, col:24, side:right)
-        - node e (row:2, col:24, side:right)
-          - node f (row:2, col:34, side:right)
-      - node a (row:2, col:14, side:right)
-    - disk c: (row:2, col:3, side:right)
+    -  (row:1, col:0, side:nil)
+      - root ng (row:1, col:3, side:right)
+        - node b (row:1, col:14, side:right)
+          - node d (row:0, col:24, side:right)
+          - node c (row:1, col:24, side:right)
+          - node e (row:2, col:24, side:right)
+            - node f (row:2, col:34, side:right)
+        - node a (row:2, col:14, side:right)
+      - disk c: (row:2, col:3, side:right)
 #+end_expected
 
 * Test Case 12: Horizontal Recovery Cross-Branch Contamination (Large Map)
@@ -202,77 +213,79 @@
                                                                 ╰─ выбирай путь, который ── обещает больше идей
 #+end_mindmap
 #+begin_expected
-    - Письмо (row:2, col:3, side:right)
-      - помощник для (row:2, col:13, side:right)
-        - мышления (row:0, col:29, side:right)
-        - изучения (row:1, col:29, side:right)
-        - генерации идей (row:2, col:29, side:right)
-        - чтения (row:3, col:29, side:right)
-        - понимания (row:4, col:29, side:right)
-    - Мышление (row:5, col:3, side:right)
-      - происходит на бумаге (row:5, col:15, side:right)
-    - Правила (row:6, col:3, side:right)
-      - держать ручку наготове (row:6, col:14, side:right)
-    - Процесс (row:20, col:3, side:right)
-      - собери заметки (row:15, col:14, side:right)
-        - мимолётные :: напоминания о мыслях (row:7, col:32, side:right)
-          - помести в одно место (row:7, col:70, side:right)
-          - обработай позже (row:8, col:70, side:right)
-        - о литературе (row:10, col:32, side:right)
-          - когда читаете (row:8, col:48, side:right)
-          - кратко (row:9, col:48, side:right)
-          - избирательно (row:10, col:48, side:right)
-            - для своих тем (row:10, col:64, side:right)
-          - своими словами (row:11, col:48, side:right)
-          - с библиографическими данными (row:12, col:48, side:right)
-          - в картотеку (row:13, col:48, side:right)
-        - постоянные (row:24, col:32, side:right)
-          - просмотри заметки (row:14, col:46, side:right)
-            - мимолётные (row:13, col:67, side:right)
-            - о литературе (row:14, col:67, side:right)
-            - раз в день (row:15, col:67, side:right)
-          - подумай (row:17, col:46, side:right)
-            - как соотносятся с (row:17, col:57, side:right)
-              - исследованиями (row:16, col:78, side:right)
-              - размышлениями (row:17, col:78, side:right)
-              - интересами (row:18, col:78, side:right)
-          - одну для каждой идеи (row:18, col:46, side:right)
-          - как для другого (row:21, col:46, side:right)
-            - полные предложения (row:19, col:65, side:right)
-            - источники (row:20, col:65, side:right)
-            - ссылки (row:21, col:65, side:right)
-            - точно (row:22, col:65, side:right)
-            - ясно (row:23, col:65, side:right)
-            - кратко (row:24, col:65, side:right)
-          - выбрось (row:25, col:46, side:right)
-            - мимолётные (row:25, col:57, side:right)
-          - добавь (row:26, col:46, side:right)
-            - позади заметки, к которой относится напрямую (row:26, col:56, side:right)
-            - ссылки (row:27, col:56, side:right)
-          - убедись (row:28, col:46, side:right)
-            - что сможешь найти (row:28, col:57, side:right)
-              - в указателе (row:28, col:78, side:right)
-              - в точке входа (row:29, col:78, side:right)
-          - разрабатывай темы (row:34, col:46, side:right)
-            - снизу вверх (row:30, col:67, side:right)
-            - посмотри (row:31, col:67, side:right)
-              - что есть (row:31, col:79, side:right)
-              - какие вопросы возникают (row:32, col:79, side:right)
-            - читай, чтобы (row:34, col:67, side:right)
-              - аргументы (row:33, col:83, side:right)
-                - поставить под сомнение (row:33, col:96, side:right)
-                - укрепить (row:34, col:96, side:right)
-              - доводы (row:35, col:83, side:right)
-                - расширить (row:35, col:93, side:right)
-                - изменить (row:36, col:93, side:right)
-            - делай больше заметок (row:36, col:67, side:right)
-            - развивай идеи (row:37, col:67, side:right)
-              - смотри, куда приведут (row:37, col:84, side:right)
-            - следуй за интересом (row:38, col:67, side:right)
-            - выбирай путь, который (row:39, col:67, side:right)
-              - обещает больше идей (row:39, col:92, side:right)
-      - преврати в черновик (row:25, col:14, side:right)
-      - отредактируй (row:26, col:14, side:right)
+    -  (row:2, col:0, side:nil)
+      - Письмо (row:2, col:3, side:right)
+        - помощник для (row:2, col:13, side:right)
+          - мышления (row:0, col:29, side:right)
+          - изучения (row:1, col:29, side:right)
+          - генерации идей (row:2, col:29, side:right)
+          - чтения (row:3, col:29, side:right)
+          - понимания (row:4, col:29, side:right)
+      - Мышление (row:5, col:3, side:right)
+        - происходит на бумаге (row:5, col:15, side:right)
+      - Правила (row:6, col:3, side:right)
+        - держать ручку наготове (row:6, col:14, side:right)
+      - Процесс (row:20, col:3, side:right)
+        - собери заметки (row:15, col:14, side:right)
+          - мимолётные :: напоминания о мыслях (row:7, col:32, side:right)
+            - помести в одно место (row:7, col:70, side:right)
+            - обработай позже (row:8, col:70, side:right)
+          - о литературе (row:10, col:32, side:right)
+            - когда читаете (row:8, col:48, side:right)
+            - кратко (row:9, col:48, side:right)
+            - избирательно (row:10, col:48, side:right)
+              - для своих тем (row:10, col:64, side:right)
+            - своими словами (row:11, col:48, side:right)
+            - с библиографическими данными (row:12, col:48, side:right)
+            - в картотеку (row:13, col:48, side:right)
+          - постоянные (row:24, col:32, side:right)
+            - просмотри заметки (row:14, col:46, side:right)
+              - мимолётные (row:13, col:67, side:right)
+              - о литературе (row:14, col:67, side:right)
+              - раз в день (row:15, col:67, side:right)
+            - подумай (row:17, col:46, side:right)
+              - как соотносятся с (row:17, col:57, side:right)
+                - исследованиями (row:16, col:78, side:right)
+                - размышлениями (row:17, col:78, side:right)
+                - интересами (row:18, col:78, side:right)
+            - одну для каждой идеи (row:18, col:46, side:right)
+            - как для другого (row:21, col:46, side:right)
+              - полные предложения (row:19, col:65, side:right)
+              - источники (row:20, col:65, side:right)
+              - ссылки (row:21, col:65, side:right)
+              - точно (row:22, col:65, side:right)
+              - ясно (row:23, col:65, side:right)
+              - кратко (row:24, col:65, side:right)
+            - преврати в черновик (row:25, col:13, side:right)
+            - выбрось (row:25, col:46, side:right)
+              - мимолётные (row:25, col:57, side:right)
+            - отредактируй (row:26, col:13, side:right)
+              - преврати в черновик (row:25, col:14, side:right)
+            - добавь (row:26, col:46, side:right)
+              - позади заметки, к которой относится напрямую (row:26, col:56, side:right)
+              - ссылки (row:27, col:56, side:right)
+            - убедись (row:28, col:46, side:right)
+              - что сможешь найти (row:28, col:57, side:right)
+                - в указателе (row:28, col:78, side:right)
+                - в точке входа (row:29, col:78, side:right)
+            - разрабатывай темы (row:34, col:46, side:right)
+              - снизу вверх (row:30, col:67, side:right)
+              - посмотри (row:31, col:67, side:right)
+                - что есть (row:31, col:79, side:right)
+                - какие вопросы возникают (row:32, col:79, side:right)
+              - читай, чтобы (row:34, col:67, side:right)
+                - аргументы (row:33, col:83, side:right)
+                  - поставить под сомнение (row:33, col:96, side:right)
+                  - укрепить (row:34, col:96, side:right)
+                - доводы (row:35, col:83, side:right)
+                  - расширить (row:35, col:93, side:right)
+                  - изменить (row:36, col:93, side:right)
+              - делай больше заметок (row:36, col:67, side:right)
+              - развивай идеи (row:37, col:67, side:right)
+                - смотри, куда приведут (row:37, col:84, side:right)
+              - следуй за интересом (row:38, col:67, side:right)
+              - выбирай путь, который (row:39, col:67, side:right)
+                - обещает больше идей (row:39, col:92, side:right)
 #+end_expected
 
 * Test Case 13: Horizontal Shift 1
@@ -286,20 +299,21 @@
              ╰─ west                 ╰─ Baluchestan
 #+end_mindmap
 #+begin_expected
-    - Geography (row:3, col:3, side:right)
-      - constant (row:0, col:16, side:right)
-      - size (row:1, col:16, side:right)
-        - 3 x France (row:1, col:24, side:right)
-        - 6 x UK (row:2, col:19, side:right)
-      - south (row:3, col:16, side:right)
-        - Persian Gulf (row:3, col:25, side:right)
-      - east (row:5, col:16, side:right)
-        - mountains of (row:5, col:24, side:right)
-          - Khurasan (row:4, col:40, side:right)
-          - Sistan (row:5, col:40, side:right)
-          - Baluchestan (row:6, col:40, side:right)
-      - west (row:6, col:16, side:right)
-    - Identity (row:4, col:3, side:right)
+    -  (row:3, col:0, side:nil)
+      - Geography (row:3, col:3, side:right)
+        - constant (row:0, col:16, side:right)
+        - size (row:1, col:16, side:right)
+          - 3 x France (row:1, col:24, side:right)
+          - 6 x UK (row:2, col:19, side:right)
+        - south (row:3, col:16, side:right)
+          - Persian Gulf (row:3, col:25, side:right)
+        - east (row:5, col:16, side:right)
+          - mountains of (row:5, col:24, side:right)
+            - Khurasan (row:4, col:40, side:right)
+            - Sistan (row:5, col:40, side:right)
+            - Baluchestan (row:6, col:40, side:right)
+        - west (row:6, col:16, side:right)
+      - Identity (row:4, col:3, side:right)
 #+end_expected
 
 * Test Case 14: Horizontal Shift 2
@@ -313,20 +327,21 @@
              ╰─ west                  ╰─ Baluchestan
 #+end_mindmap
 #+begin_expected
-    - Geography (row:3, col:3, side:right)
-      - constant (row:0, col:16, side:right)
-      - size (row:1, col:16, side:right)
-        - 3 x France (row:1, col:24, side:right)
-        - 6 x UK (row:2, col:24, side:right)
-      - south (row:3, col:16, side:right)
-        - Persian Gulf (row:3, col:25, side:right)
-      - east (row:5, col:16, side:right)
-        - mountains of (row:5, col:24, side:right)
-          - Khurasan (row:4, col:40, side:right)
-          - Sistan (row:5, col:40, side:right)
-          - Baluchestan (row:6, col:41, side:right)
-      - west (row:6, col:16, side:right)
-    - Identity (row:4, col:3, side:right)
+    -  (row:3, col:0, side:nil)
+      - Geography (row:3, col:3, side:right)
+        - constant (row:0, col:16, side:right)
+        - size (row:1, col:16, side:right)
+          - 3 x France (row:1, col:24, side:right)
+          - 6 x UK (row:2, col:24, side:right)
+        - south (row:3, col:16, side:right)
+          - Persian Gulf (row:3, col:25, side:right)
+        - east (row:5, col:16, side:right)
+          - mountains of (row:5, col:24, side:right)
+            - Khurasan (row:4, col:40, side:right)
+            - Sistan (row:5, col:40, side:right)
+            - Baluchestan (row:6, col:41, side:right)
+        - west (row:6, col:16, side:right)
+      - Identity (row:4, col:3, side:right)
 #+end_expected
 
 * Test Case 15: Explicit Root Bidirectional
@@ -335,6 +350,92 @@
 #+end_mindmap
 #+begin_expected
     - Root (row:0, col:10, side:nil)
-      - Right (row:0, col:22, side:right)
       - Left (row:0, col:0, side:left)
+      - Right (row:0, col:22, side:right)
+#+end_expected
+
+* Test Case 16: Bidirectional Empty Root
+#+begin_mindmap
+                          ╭─ constant
+                          ├─ size ┬─ 3 x France
+  One ─┐                  │       ╰─ 6 x UK
+  Two ─┤─ ◀▶ ┬─ Geography ┼─ south ── Persian Gulf
+Three ─┘     ╰─ Identity  │                       ╭─ Khurasan
+                          ├─ east ── mountains of ┼─ Sistan
+                          ╰─ west                 ╰─ Baluchestan
+#+end_mindmap
+#+begin_expected
+    -  (row:3, col:10, side:nil)
+      - One (row:2, col:0, side:left)
+      - Two (row:3, col:0, side:left)
+      - Geography (row:3, col:16, side:right)
+        - constant (row:0, col:29, side:right)
+        - size (row:1, col:29, side:right)
+          - 3 x France (row:1, col:37, side:right)
+          - 6 x UK (row:2, col:37, side:right)
+        - south (row:3, col:29, side:right)
+          - Persian Gulf (row:3, col:38, side:right)
+        - east (row:5, col:29, side:right)
+          - mountains of (row:5, col:37, side:right)
+            - Khurasan (row:4, col:53, side:right)
+            - Sistan (row:5, col:53, side:right)
+            - Baluchestan (row:6, col:53, side:right)
+        - west (row:6, col:29, side:right)
+      - Three (row:4, col:0, side:left)
+      - Identity (row:4, col:16, side:right)
+#+end_expected
+
+* Test Case 17: Bidirectional Non-Empty Root
+#+begin_mindmap
+                                ╭─ constant
+                                ├─ size ┬─ 3 x France
+  One ─┐                        │       ╰─ 6 x UK
+  Two ─┤─ ◀ Iran ▶ ┬─ Geography ┼─ south ── Persian Gulf
+Three ─┘           ╰─ Identity  │                       ╭─ Khurasan
+                                ├─ east ── mountains of ┼─ Sistan
+                                ╰─ west                 ╰─ Baluchestan
+#+end_mindmap
+#+begin_expected
+    - Iran (row:3, col:10, side:nil)
+      - One (row:2, col:0, side:left)
+      - Two (row:3, col:0, side:left)
+      - Geography (row:3, col:22, side:right)
+        - constant (row:0, col:35, side:right)
+        - size (row:1, col:35, side:right)
+          - 3 x France (row:1, col:43, side:right)
+          - 6 x UK (row:2, col:43, side:right)
+        - south (row:3, col:35, side:right)
+          - Persian Gulf (row:3, col:44, side:right)
+        - east (row:5, col:35, side:right)
+          - mountains of (row:5, col:43, side:right)
+            - Khurasan (row:4, col:59, side:right)
+            - Sistan (row:5, col:59, side:right)
+            - Baluchestan (row:6, col:59, side:right)
+        - west (row:6, col:35, side:right)
+      - Three (row:4, col:0, side:left)
+      - Identity (row:4, col:22, side:right)
+#+end_expected
+
+* Test Case 18: Implicit Text Root
+#+begin_mindmap
+Root ┬─ Node A
+     ├─ Node B
+     ╰─ Node C
+#+end_mindmap
+#+begin_expected
+    - Root (row:0, col:0, side:nil)
+      - Node A (row:0, col:8, side:right)
+      - Node B (row:1, col:8, side:right)
+      - Node C (row:2, col:8, side:right)
+#+end_expected
+
+* Test Case 19: Disconnected Implicit Roots
+#+begin_mindmap
+Root1 ┬─ A
+Root2 ╰─ B
+#+end_mindmap
+#+begin_expected
+    - Root1 (row:0, col:0, side:nil)
+      - A (row:0, col:9, side:right)
+      - B (row:1, col:9, side:right)
 #+end_expected
