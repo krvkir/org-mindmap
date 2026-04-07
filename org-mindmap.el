@@ -55,7 +55,7 @@
   :type 'boolean
   :group 'org-mindmap)
 
-(defcustom org-mindmap-protect-connectors t
+(defcustom org-mindmap-protect-connectors nil
   "Make connectors read-only."
   :type 'boolean
   :group 'org-mindmap)
