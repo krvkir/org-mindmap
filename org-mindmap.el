@@ -95,12 +95,10 @@ Ensures properties are not sticky to allow editing node text at the boundary."
 
 (defun org-mindmap--move-to (row col)
   "Navigate to ROW and COL within current buffer, padding spaces if needed."
-  (goto-char (point-min))
-  (let ((current-row (1- (line-number-at-pos (point-max)))))
-    (while (< current-row row)
-      (goto-char (point-max))
-      (insert "\n")
-      (cl-incf current-row)))
+  (goto-char (point-max))
+  (let ((max-line (1- (line-number-at-pos))))
+    (when (< max-line row)
+      (insert (make-string (- row max-line) ?\n))))
   (goto-char (point-min))
   (forward-line row)
   (move-to-column col t))
@@ -136,15 +134,13 @@ This also includes their vertical connectors and respects SPACING."
                      (push (list r conn-c (1+ conn-c)) occ))))))
     occ))
 
-(defun org-mindmap--check-overlap-subtree (nodes delta occupied spacing)
-  "Check if shifting NODES by DELTA overlaps with OCCUPIED map with SPACING."
-  (let ((nodes-occ (org-mindmap--get-occupied nodes spacing)))
-    (cl-loop for (n-r n-s n-e) in nodes-occ
-             thereis
-             (let ((r (+ n-r delta)))
-               (cl-loop for (occ-r occ-s occ-e) in occupied
-                        thereis (and (= r occ-r)
-                                     (not (or (<= n-e occ-s) (>= n-s occ-e)))))))))
+(defun org-mindmap--check-overlap-subtree (nodes-occ delta occupied-map)
+  "Check if shifting nodes with occupancy NODES-OCC by DELTA overlaps with OCCUPIED-MAP."
+  (cl-loop for (n-r n-s n-e) in nodes-occ
+           thereis
+           (let ((r (+ n-r delta)))
+             (cl-loop for (occ-s . occ-e) in (gethash r occupied-map)
+                      thereis (not (or (<= n-e occ-s) (>= n-s occ-e)))))))
 
 (defun org-mindmap-build-subtree (node col layout spacing)
   "Recursively calculates rows and cols for NODE and its children.
@@ -160,7 +156,7 @@ Requires COL, LAYOUT, and SPACING."
           (setf (org-mindmap-parser-node-row node) 0)
           (list 0 0 (list node)))
 
-      (let ((global-occupied nil)
+      (let ((global-occupied-map (make-hash-table :test 'eq))
             (all-nodes nil)
             (prev-child-row nil))
 
@@ -178,13 +174,17 @@ Requires COL, LAYOUT, and SPACING."
                   (setq delta (if all-nodes
                                   (+ (apply #'max (mapcar #'org-mindmap-parser-node-row all-nodes)) 1 (- c-min))
                                 (- c-min)))
-                (while (org-mindmap--check-overlap-subtree c-nodes delta global-occupied spacing)
-                  (cl-incf delta)))
+                (let ((c-nodes-occ (org-mindmap--get-occupied c-nodes spacing)))
+                  (while (org-mindmap--check-overlap-subtree c-nodes-occ delta global-occupied-map)
+                    (cl-incf delta))))
 
               (dolist (n c-nodes)
                 (setf (org-mindmap-parser-node-row n) (+ (org-mindmap-parser-node-row n) delta)))
 
-              (setq global-occupied (append (org-mindmap--get-occupied c-nodes spacing) global-occupied))
+              (let ((c-nodes-occ (org-mindmap--get-occupied c-nodes spacing)))
+                (dolist (o c-nodes-occ)
+                  (push (cons (nth 1 o) (nth 2 o)) (gethash (nth 0 o) global-occupied-map))))
+
               (setq prev-child-row (org-mindmap-parser-node-row child))
               (setq all-nodes (append all-nodes c-nodes)))))
 
@@ -207,7 +207,7 @@ Requires COL, LAYOUT, and SPACING."
 
 (defun org-mindmap-build-tree-layout (roots layout spacing)
   "Assigns row and col to all nodes in ROOTS using LAYOUT and SPACING."
-  (let ((global-occupied nil)
+  (let ((global-occupied-map (make-hash-table :test 'eq))
         (all-nodes nil)
         (prev-root-row nil))
 
@@ -225,13 +225,17 @@ Requires COL, LAYOUT, and SPACING."
               (setq delta (if all-nodes
                               (+ (apply #'max (mapcar #'org-mindmap-parser-node-row all-nodes)) 1 (- r-min))
                             (- r-min)))
-            (while (org-mindmap--check-overlap-subtree r-nodes delta global-occupied spacing)
-              (cl-incf delta)))
+            (let ((r-nodes-occ (org-mindmap--get-occupied r-nodes spacing)))
+              (while (org-mindmap--check-overlap-subtree r-nodes-occ delta global-occupied-map)
+                (cl-incf delta))))
 
           (dolist (n r-nodes)
             (setf (org-mindmap-parser-node-row n) (+ (org-mindmap-parser-node-row n) delta)))
 
-          (setq global-occupied (append (org-mindmap--get-occupied r-nodes spacing) global-occupied))
+          (let ((r-nodes-occ (org-mindmap--get-occupied r-nodes spacing)))
+            (dolist (o r-nodes-occ)
+              (push (cons (nth 1 o) (nth 2 o)) (gethash (nth 0 o) global-occupied-map))))
+
           (setq prev-root-row (org-mindmap-parser-node-row root))
           (setq all-nodes (append all-nodes r-nodes)))))
 
