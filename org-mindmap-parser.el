@@ -110,13 +110,13 @@ If RECOVERING is non-nil, allow slight drift for broken connections."
      ((org-mindmap-parser--is-whitespace char) nil)
      ((not (org-mindmap-parser--is-connector char))
       (if recovering
-          (if (equal moving-dir org-mindmap-parser-dir-right)
-              (let ((prev (org-mindmap-parser--grid-get lines row (1- col))))
-                (or (null prev) (org-mindmap-parser--is-whitespace prev) (org-mindmap-parser--is-connector prev)))
-            (if (equal moving-dir org-mindmap-parser-dir-left)
-                (let ((next (org-mindmap-parser--grid-get lines row (1+ col))))
-                  (or (null next) (org-mindmap-parser--is-whitespace next) (org-mindmap-parser--is-connector next)))
-              nil))
+          ;; recovery mode treats text as non-connector
+          (let* ((prev-col (cond ((equal moving-dir org-mindmap-parser-dir-right) (1- col))
+                                 ((equal moving-dir org-mindmap-parser-dir-left) (1+ col))))
+                 (prev (when prev-col (org-mindmap-parser--grid-get lines row prev-col))))
+            (or (null prev)
+                (org-mindmap-parser--is-whitespace prev)
+                (org-mindmap-parser--is-connector prev)))
         t))
      (t
       (let ((entry-port (org-mindmap-parser--invert-dir moving-dir))
@@ -131,23 +131,26 @@ from the current one.  The search is performed within
 position.  It drifts PERPENDICULAR to the direction of MOVING-DIR to
 find broken lines (e.g., horizontal shifts of ├)."
   (org-mindmap-parser--debug "recover-connection: Started from (%d, %d) moving %S" row col moving-dir)
-  (let ((found nil))
-    (cl-loop for drift from 1 to org-mindmap-parser-recovery-drift
-             until found
-             do
-             (cond
-              ((= (car moving-dir) 0)
-               (org-mindmap-parser--debug "recover-connection: vert movement, drifting horiz by %d" drift)
-               (if (org-mindmap-parser--accepts-entry-p lines row (- col drift) moving-dir t)
-                   (setq found (cons row (- col drift)))
-                 (when (org-mindmap-parser--accepts-entry-p lines row (+ col drift) moving-dir t)
-                   (setq found (cons row (+ col drift))))))
-              ((= (cdr moving-dir) 0)
-               (org-mindmap-parser--debug "recover-connection: horiz movement, no vertical drift allowed.")
-               nil)))
-    (when found
-      (org-mindmap-parser--debug "recover-connection: Found at %S" found))
-    found))
+  (cond
+   ((= (car moving-dir) 0)
+    (let* ((found nil)
+           (prev-col (cond ((equal moving-dir org-mindmap-parser-dir-right) (1- col))
+                           ((equal moving-dir org-mindmap-parser-dir-left) (1+ col))))
+           (prev (when prev-col (org-mindmap-parser--grid-get lines row prev-col))))
+      (cl-loop for drift from 1 to org-mindmap-parser-recovery-drift
+               until found
+               do
+               (progn
+                 (org-mindmap-parser--debug "recover-connection: vert movement, drifting horiz by %d" drift)
+                 (if (org-mindmap-parser--accepts-entry-p lines row (- col drift) moving-dir t)
+                     (setq found (cons row (- col drift)))
+                   (when (org-mindmap-parser--accepts-entry-p lines row (+ col drift) moving-dir t)
+                     (setq found (cons row (+ col drift)))))))
+      (when found (org-mindmap-parser--debug "recover-connection: Found at %S" found))
+      found))
+   ((= (cdr moving-dir) 0)
+    (org-mindmap-parser--debug "recover-connection: horiz movement, no vertical drift allowed.")
+    nil)))
 
 ;; --- 3. Text Parsing ---
 (defun org-mindmap-parser--parse-text-node (lines row start-col moving-dir visited)
@@ -180,9 +183,9 @@ on MOVING-DIR.  Updates VISITED."
     (let* ((node-text (string-trim (apply #'string text-chars)))
            (final-col (if (equal moving-dir org-mindmap-parser-dir-left) (1+ curr-col) start-col))
            (node (org-mindmap-parser-make-node :id (cl-gensym "node")
-                                        :text node-text
-                                        :row row
-                                        :col final-col)))
+                                               :text node-text
+                                               :row row
+                                               :col final-col)))
       (cons node next-col-to-trace))))
 
 ;; --- 4. The 2D Walker ---
@@ -203,65 +206,67 @@ Returns a list of nodes found along this path."
       (let* ((char (org-mindmap-parser--grid-get lines row col))
              (accepts (org-mindmap-parser--accepts-entry-p lines row col moving-dir)))
         (org-mindmap-parser--debug "trace-path: Visiting (%d, %d) char: %c accepts: %s"
-                            row col (or char ?\s) accepts)
-
+                                   row col (or char ?\s) accepts)
         (if (not accepts)
-            (if (and (= (cdr moving-dir) 0) (org-mindmap-parser--is-whitespace char))
-                (let ((skip-row row)
-                      (skip-col col)
-                      (skipped 0)
-                      (found nil))
-                  (while (and (not found) (< skipped org-mindmap-parser-recovery-drift))
-                    (if (org-mindmap-parser--accepts-entry-p lines skip-row skip-col moving-dir t)
-                        (setq found (cons skip-row skip-col))
-                      (if (not (org-mindmap-parser--is-whitespace
-                                (org-mindmap-parser--grid-get lines skip-row skip-col)))
-                          (setq skipped org-mindmap-parser-recovery-drift)
-                        (setq skip-col (+ skip-col (car moving-dir)))
-                        (cl-incf skipped))))
-                  (if found
-                      (org-mindmap-parser--trace-path lines (car found) (cdr found) moving-dir visited)
-                    nil))
-              ;; Always try vertical-movement horizontal-drift recovery!
-              (let ((new-pos (org-mindmap-parser--recover-connection lines row col moving-dir)))
-                (if new-pos
-                    (org-mindmap-parser--trace-path lines (car new-pos) (cdr new-pos) moving-dir visited)
-                  nil)))
+            ;; can't connect
+            (cond ((= (cdr moving-dir) 0)
+                   ;; moving horizontally
+                   (when (org-mindmap-parser--is-whitespace char)
+                     ;; moving horizontally and found a whitespace -> search for node text
+                     (let ((skip-col col)
+                           (skipped 0)
+                           (found nil))
+                       (while (and (not found) (< skipped org-mindmap-parser-recovery-drift))
+                         (if (org-mindmap-parser--accepts-entry-p lines row skip-col moving-dir t)
+                             (setq found (cons row skip-col))
+                           (if (not (org-mindmap-parser--is-whitespace
+                                     (org-mindmap-parser--grid-get lines row skip-col)))
+                               (setq skipped org-mindmap-parser-recovery-drift)
+                             (setq skip-col (+ skip-col (car moving-dir)))
+                             (cl-incf skipped))))
+                       (if found
+                           (org-mindmap-parser--trace-path lines (car found) (cdr found) moving-dir visited)
+                         nil))))
+                  ((= (car moving-dir) 0)
+                   ;; moving vertically -> recover
+                   (let ((new-pos (org-mindmap-parser--recover-connection lines row col moving-dir)))
+                     (if new-pos
+                         (org-mindmap-parser--trace-path lines (car new-pos) (cdr new-pos) moving-dir visited)
+                       nil))))
+          ;; connected
+          (puthash (cons row col) t visited)
+          (if (not (org-mindmap-parser--is-connector char))
+              (let* ((parsed (org-mindmap-parser--parse-text-node lines row col moving-dir visited))
+                     (node (car parsed))
+                     (next-col (cdr parsed)))
+                (org-mindmap-parser--debug "trace-path: Found text node: '%s'" (org-mindmap-parser-node-text node))
+                (when next-col
+                  (let ((children (org-mindmap-parser--trace-path lines row next-col moving-dir visited)))
+                    (dolist (child children)
+                      (setf (org-mindmap-parser-node-parent child) node))
+                    (setf (org-mindmap-parser-node-children node) children)))
+                (list node))
 
-          (when accepts
-            (puthash (cons row col) t visited)
-            (if (not (org-mindmap-parser--is-connector char))
-                (let* ((parsed (org-mindmap-parser--parse-text-node lines row col moving-dir visited))
-                       (node (car parsed))
-                       (next-col (cdr parsed)))
-                  (org-mindmap-parser--debug "trace-path: Found text node: '%s'" (org-mindmap-parser-node-text node))
-                  (when next-col
-                    (let ((children (org-mindmap-parser--trace-path lines row next-col moving-dir visited)))
-                      (dolist (child children)
-                        (setf (org-mindmap-parser-node-parent child) node))
-                      (setf (org-mindmap-parser-node-children node) children)))
-                  (list node))
-
-              (let* ((entry-port (org-mindmap-parser--invert-dir moving-dir))
-                     (char-ports (gethash char org-mindmap-parser-ports))
-                     (remaining-ports (remove entry-port char-ports)))
-                (cond
-                 ((= (length remaining-ports) 0)
-                  nil)
-                 ((= (length remaining-ports) 1)
-                  (let* ((next-dir (car remaining-ports))
-                         (next-col (+ col (car next-dir)))
-                         (next-row (+ row (cdr next-dir))))
-                    (org-mindmap-parser--debug "trace-path: Single path. Next: (%d, %d)" next-row next-col)
-                    (org-mindmap-parser--trace-path lines next-row next-col next-dir visited)))
-                 (t
-                  (org-mindmap-parser--debug "trace-path: Branching %S" remaining-ports)
-                  (apply #'append
-                         (mapcar (lambda (branch-dir)
-                                   (let ((b-row (+ row (cdr branch-dir)))
-                                         (b-col (+ col (car branch-dir))))
-                                     (org-mindmap-parser--trace-path lines b-row b-col branch-dir visited)))
-                                 remaining-ports))))))))))))
+            (let* ((entry-port (org-mindmap-parser--invert-dir moving-dir))
+                   (char-ports (gethash char org-mindmap-parser-ports))
+                   (remaining-ports (remove entry-port char-ports)))
+              (cond
+               ((= (length remaining-ports) 0)
+                nil)
+               ((= (length remaining-ports) 1)
+                (let* ((next-dir (car remaining-ports))
+                       (next-col (+ col (car next-dir)))
+                       (next-row (+ row (cdr next-dir))))
+                  (org-mindmap-parser--debug "trace-path: Single path. Next: (%d, %d)" next-row next-col)
+                  (org-mindmap-parser--trace-path lines next-row next-col next-dir visited)))
+               (t
+                (org-mindmap-parser--debug "trace-path: Branching %S" remaining-ports)
+                (apply #'append
+                       (mapcar (lambda (branch-dir)
+                                 (let ((b-row (+ row (cdr branch-dir)))
+                                       (b-col (+ col (car branch-dir))))
+                                   (org-mindmap-parser--trace-path lines b-row b-col branch-dir visited)))
+                               remaining-ports)))))))))))
 
 ;; --- 5. Region Detection ---
 (defun org-mindmap-parser-get-region ()
