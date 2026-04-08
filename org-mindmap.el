@@ -295,6 +295,22 @@ Requires COL, LAYOUT, and SPACING."
           (concat (car org-mindmap-parser-root-delimiters) " " raw-text " " (cdr org-mindmap-parser-root-delimiters)))
       raw-text)))
 
+(defun org-mindmap--connector-symbol (has-above has-below has-left has-right)
+  "Determine the correct box-drawing character based on connection directions."
+  (cond
+   ((and has-above has-below has-left has-right) "┼")
+   ((and has-above has-below has-left (not has-right)) "┤")
+   ((and has-above has-below (not has-left) has-right) "├")
+   ((and has-above has-below (not has-left) (not has-right)) "│")
+   ((and has-above (not has-below) has-left has-right) "┴")
+   ((and has-above (not has-below) has-left (not has-right)) "╯")
+   ((and has-above (not has-below) (not has-left) has-right) "╰")
+   ((and (not has-above) has-below has-left has-right) "┬")
+   ((and (not has-above) has-below has-left (not has-right)) "╮")
+   ((and (not has-above) has-below (not has-left) has-right) "╭")
+   ((and (not has-above) (not has-below) has-left has-right) "─")
+   (t "│")))
+
 (defun org-mindmap--draw-node (node)
   "Write NODE text and box-drawing connectors onto the buffer canvas."
   (let* ((r (org-mindmap-parser-node-row node))
@@ -332,20 +348,7 @@ Requires COL, LAYOUT, and SPACING."
                         (has-below (< y max-y))
                         (has-left  (memq y child-rows))
                         (has-right (= y r)))
-                   (let ((sym
-                          (cond
-                           ((and has-above has-below has-left has-right) "┼")
-                           ((and has-above has-below has-left (not has-right)) "┤")
-                           ((and has-above has-below (not has-left) has-right) "├")
-                           ((and has-above has-below (not has-left) (not has-right)) "│")
-                           ((and has-above (not has-below) has-left has-right) "┴")
-                           ((and has-above (not has-below) has-left (not has-right)) "╯")
-                           ((and has-above (not has-below) (not has-left) has-right) "╰")
-                           ((and (not has-above) has-below has-left has-right) "┬")
-                           ((and (not has-above) has-below has-left (not has-right)) "╮")
-                           ((and (not has-above) has-below (not has-left) has-right) "╭")
-                           ((and (not has-above) (not has-below) has-left has-right) "─")
-                           (t "│"))))
+                   (let ((sym (org-mindmap--connector-symbol has-above has-below has-left has-right)))
                      (if has-left
                          (progn
                            (org-mindmap--move-to y (1- conn-c))
@@ -370,20 +373,7 @@ Requires COL, LAYOUT, and SPACING."
                         (has-below (< y max-y))
                         (has-left  (= y r))
                         (has-right (memq y child-rows)))
-                   (let ((sym
-                          (cond
-                           ((and has-above has-below has-left has-right) "┼")
-                           ((and has-above has-below has-left (not has-right)) "┤")
-                           ((and has-above has-below (not has-left) has-right) "├")
-                           ((and has-above has-below (not has-left) (not has-right)) "│")
-                           ((and has-above (not has-below) has-left has-right) "┴")
-                           ((and has-above (not has-below) has-left (not has-right)) "╯")
-                           ((and has-above (not has-below) (not has-left) has-right) "╰")
-                           ((and (not has-above) has-below has-left has-right) "┬")
-                           ((and (not has-above) has-below has-left (not has-right)) "╮")
-                           ((and (not has-above) has-below (not has-left) has-right) "╭")
-                           ((and (not has-above) (not has-below) has-left has-right) "─")
-                           (t "│"))))
+                   (let ((sym (org-mindmap--connector-symbol has-above has-below has-left has-right)))
                      (if has-right
                          (let ((conn-str (concat sym "─ ")))
                            (delete-region (point) (min (+ (point) 3) (line-end-position)))
