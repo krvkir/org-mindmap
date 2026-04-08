@@ -79,15 +79,18 @@
   "Apply face and optional read-only properties to connector STR.
 Ensures properties are not sticky to allow editing node text at the boundary."
   (let ((props (list 'face 'org-mindmap-face-connectors
-                     'rear-nonsticky '(read-only face)
-                     'front-sticky '(read-only face))))
+                     'font-lock-face 'org-mindmap-face-connectors
+                     'rear-nonsticky '(read-only face font-lock-face)
+                     'front-sticky '(read-only face font-lock-face))))
     (when org-mindmap-protect-connectors
       (setq props (plist-put props 'read-only t)))
     (apply #'propertize str props)))
 
 (defun org-mindmap--propertize-text (str)
   "Apply text face to STR."
-  (propertize str 'face 'org-mindmap-face-text))
+  (propertize str
+              'face 'org-mindmap-face-text
+              'font-lock-face 'org-mindmap-face-text))
 
 ;;
 ;; Rendering and Layout Engine
