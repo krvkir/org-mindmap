@@ -732,7 +732,7 @@ In the single-root model, this is only allowed if no root exists."
       (if (null grandparent)
           ;; Case: target-node is a child of the root node. Shift side.
           (let ((new-side (if (eq (org-mindmap-parser-node-side target-node) 'left) 'right 'left)))
-            (setf (org-mindmap-parser-node-side target-node) new-side)
+            (org-mindmap--set-side-recursive target-node new-side)
             ;; Move to the end of siblings list to be at the "bottom" of the other side
             (setf (org-mindmap-parser-node-children parent)
                   (append (remq target-node (org-mindmap-parser-node-children parent))
@@ -745,7 +745,7 @@ In the single-root model, this is only allowed if no root exists."
               (org-mindmap--insert-after (org-mindmap-parser-node-children grandparent) parent target-node))
         ;; Inherit side from new parent (grandparent) if it has one
         (when (org-mindmap-parser-node-side grandparent)
-          (setf (org-mindmap-parser-node-side target-node) (org-mindmap-parser-node-side grandparent)))))
+          (org-mindmap--set-side-recursive target-node (org-mindmap-parser-node-side grandparent)))))
     (let* ((props (org-mindmap--parse-properties start))
            (layout (intern (or (plist-get props :layout) (symbol-name org-mindmap-default-layout))))
            (spacing (string-to-number (or (plist-get props :spacing) (number-to-string org-mindmap-spacing)))))
@@ -771,7 +771,7 @@ In the single-root model, this is only allowed if no root exists."
         (setf (org-mindmap-parser-node-children prev-sibling)
               (append (org-mindmap-parser-node-children prev-sibling) (list target-node)))
         ;; Inherit side from new parent
-        (setf (org-mindmap-parser-node-side target-node) (org-mindmap-parser-node-side prev-sibling))
+        (org-mindmap--set-side-recursive target-node (org-mindmap-parser-node-side prev-sibling))
         (let* ((props (org-mindmap--parse-properties start))
                (layout (intern (or (plist-get props :layout) (symbol-name org-mindmap-default-layout))))
                (spacing (string-to-number (or (plist-get props :spacing) (number-to-string org-mindmap-spacing)))))
@@ -785,6 +785,14 @@ In the single-root model, this is only allowed if no root exists."
 (declare-function org-list-get-top-point "org-list")
 (declare-function org-list-to-lisp "org-list")
 (declare-function org-at-item-p "org-list")
+
+
+(defun org-mindmap--set-side-recursive (node side)
+  "Set SIDE of NODE and all its descendants to SIDE."
+  (setf (org-mindmap-parser-node-side node) side)
+  (dolist (child (org-mindmap-parser-node-children node))
+    (org-mindmap--set-side-recursive child side)))
+
 
 (defun org-mindmap--lisp-to-nodes (lisp-list &optional parent side-override)
   "Convert an org-list `LISP-LIST' into a list of `org-mindmap-parser-node's.

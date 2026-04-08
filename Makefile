@@ -6,6 +6,7 @@ test:
 	emacs -batch -L . -l tests/test-rendering.el
 	emacs -batch -L . -l tests/test-editing.el -f ert-run-tests-batch-and-exit
 	emacs -batch -L . -l tests/test-conversion.el -f ert-run-tests-batch-and-exit
+	emacs -batch -L . -l tests/test-regressions.el -f ert-run-tests-batch-and-exit
 	emacs -batch -L . -l tests/benchmark.el
 
 update-test-results:
