@@ -4,10 +4,10 @@ Editable mind maps for Org.
 
 #+begin_src
 #+begin_mindmap
-               ╭─ dolor sit amet,                        ╭─ eiusmod
-┬─ Lorem ipsum ┤              ╭─ adipiscing elit, sed do ┼─ tempor
-               ╰─ consectetur ┤                          ╰─ incididunt
-                              ╰─ ut labore ── et dolore magna aliqua.
+                                     ╭─ consectetur ── ut labore
+   dolor sit amet ─┬ ◀ Lorem ipsum ▶ ┤                          ╭─ eiusmod
+Per Org ad astra! ─╯                 ├─ adipiscing elit, sed do ┼─ tempor
+                                     ╰─ et dolore magna aliqua. ╰─ incididunt
 #+end_mindmap
 #+end_src
 
@@ -43,21 +43,30 @@ Root node
 ,#+end_mindmap
 #+end_src
 
-Add several siblings with =M-RET=, just as you'd do with a list:
+Press =C-c C-c= to redraw the map. Root node brackets should be added:
 #+begin_src
-,#+begin_mindmap
-┬─ Root node
-├─ Second node
-╰─ Third node
-,#+end_mindmap
+#+begin_mindmap
+◀ Root node ▶
+#+end_mindmap
 #+end_src
 
-Move them around with =M-<up>=, =M-<down>=, =M-<left>= and =M-<right>=. Put the cursor on the node text and press one of those keys:
+Add several child nodes with =TAB= and siblings with =RET=:
 #+begin_src
-,#+begin_mindmap
-┬─ Root node ┬─ Third node
-             ╰─ Second node
-,#+end_mindmap
+#+begin_mindmap
+              ╭─ First node
+◀ Root node ▶ ┼─ Second node
+              ╰─ Third node
+#+end_mindmap
+#+end_src
+
+Edit the text of a node at point with =M-RET=: this will preserve the layout. Or, if your edits are tiny, just edit the text and redraw the map with =C-c C-c=.
+
+Move nodes around with =M-<up>=, =M-<down>=, =M-<left>= and =M-<right>=. Put the cursor on the node text and press one of those keys:
+#+begin_src
+#+begin_mindmap
+Second node ─┬ ◀ Root node ▶ ┬─ First node
+Fourth node ─╯               ╰─ Third node
+#+end_mindmap
 #+end_src
 
 Here is the keys reference:
@@ -101,52 +110,54 @@ If you have a list, you can transform it to mindmap with =org-mindmap-list-to-mi
 #+end_src
 
 #+begin_src
-,#+begin_mindmap
-┬─ For want of a nail ── the shoe was lost,
-├─ For want of a shoe ── the horse was lost,
-├─ For want of a horse ── the rider was lost,
-├─ For want of a rider ── the battle was lost,
-├─ For want of a battle ── the kingdom was lost,
-╰─ And all for the want ── of horseshoe nail.
-,#+end_mindmap
+#+begin_mindmap
+   ╭─ For want of a nail ── the shoe was lost,
+   ├─ For want of a shoe ── the horse was lost,
+◀▶ ┼─ For want of a horse ── the rider was lost,
+   ├─ For want of a rider ── the battle was lost,
+   ├─ For want of a battle ── the kingdom was lost,
+   ╰─ And all for the want ── of horseshoe nail.
+#+end_mindmap
 #+end_src
 ... and back to list with =org-mindmap-to-list=.
 
 * Layouts
-Mindmaps are only left to right. Two-sided mindmaps are not supported. Formatting inside nodes text is also not supported.
++Mindmaps are only left to right. Two-sided mindmaps are not supported.+ Bidirectional maps are now supported!
+
+No formatting inside nodes text is supported yet.
 
 There are three layouts:
 1. =left=, the simplest and the default one
 #+begin_src 
 ,#+begin_mindmap :layout left
-┬─ root ng ┬─ node b ┬─ node d
-│          │         ├─ node c
-│          │         ╰─ node e ── node f
-│          ╰─ node a
-╰─ disk c: ┬─ Windows
-           ╰─ Users
+◀▶ ┬─ root ng ┬─ node b ┬─ node d
+   │          │         ├─ node c
+   │          │         ╰─ node e ── node f
+   │          ╰─ node a
+   ╰─ disk c: ┬─ Windows
+              ╰─ Users
 ,#+end_mindmap
 #+end_src
 
 2. =compact=, the one where nodes float up if there's space for them (like node a here).
 #+begin_src 
 ,#+begin_mindmap :layout compact
-┬─ root ng ┬─ node b ┬─ node d
-│          ╰─ node a ├─ node c
-│                    ╰─ node e ── node f
-╰─ disk c: ┬─ Windows
-           ╰─ Users
+◀▶ ┬─ root ng ┬─ node b ┬─ node d
+   │          ╰─ node a ├─ node c
+   │                    ╰─ node e ── node f
+   ╰─ disk c: ┬─ Windows
+              ╰─ Users
 ,#+end_mindmap
 #+end_src
 
 3. =centered=, like above, but the root nodes are vertically centered against their children.
 #+begin_src 
 ,#+begin_mindmap :layout centered
-                     ╭─ node d
-┬─ root ng ┬─ node b ┼─ node c
-│          ╰─ node a ╰─ node e ── node f
-╰─ disk c: ┬─ Windows
-           ╰─ Users
+                        ╭─ node d
+   ╭─ root ng ┬─ node b ┼─ node c
+◀▶ ┤          ╰─ node a ╰─ node e ── node f
+   ╰─ disk c: ┬─ Windows
+              ╰─ Users
 ,#+end_mindmap
 #+end_src
 
@@ -154,35 +165,57 @@ There are three layouts:
 Here's one more complex example mindmap for a chapter from Sönke Ahrens — How to Take Smart Notes.
 #+begin_src 
 #+begin_mindmap :layout centered
-                            ╭─ thinking
-                            ├─ studying
-┬─ Writing ── is an aid for ┼─ generating ideas
-│                           ├─ reading
-│                           ╰─ understanding
-├─ Thinking ── happens on paper
-├─ Rules ── keep a pen at hand
-├─ fleeting                 ╭─ fleeting :: reminders of thoughts ┬─ put in one place
-│                           │             ╭─ when reading        ╰─ process later
-│                           │             ├─ briefly
-│                           ├─ literature ┼─ selectively ── for your own topics
-│                           │             ├─ in your own words
-│                           │             ├─ with bibliographic data
-│                           │             ╰─ put to the reference system
-│          ╭─ collect notes ┤                            ╭─ feeting
-│          │                │            ╭─ review notes ┼─ literature
-│          │                │            │               ╰─ once a day  ╭─ research
-│          │                │            ├─ think ── how they relate to ┼─ reflections
-╰─ Process ┤                │            ├─ one note for each idea      ╰─ interests
-           │                │            │                        ╭─ full sentences
-           │                │            │                        ├─ sources
-           │                ╰─ permanent ┼─ as for another person ┼─ links
-           ├─ turn into draft            ├─ discard ── fleeting   ├─ precisely
-           ╰─ edit                       │                        ├─ clearly
-                                         │                        ╰─ briefly
-                                         ├─ add ┬─ behind the note it relates to directly
-                                         │      ╰─ links
-                                         ╰─ make sure ── you can find it ┬─ in the index
-                                                                         ╰─ at entry point
+                               ╭─ thinking
+                               ├─ studying
+   ╭─ Writing ── is an aid for ┼─ generating ideas
+   │                           ├─ reading
+   │                           ╰─ understanding
+   ├─ Thinking ── happens on paper
+   ├─ Rules ── keep a pen at hand
+   ├─ fleeting                 ╭─ fleeting :: reminders of thoughts ┬─ put in one place
+   │                           │             ╭─ when reading        ╰─ process later
+   │                           │             ├─ briefly
+   │                           ├─ literature ┼─ selectively ── for your own topics
+   │                           │             ├─ in your own words
+   │                           │             ├─ with bibliographic data
+   │                           │             ╰─ put to the reference system
+◀▶ ┤                           │                            ╭─ feeting
+   │                           │            ╭─ review notes ┼─ literature
+   │                           │            │               ╰─ once a day  ╭─ research
+   ╰─ Process ┬─ collect notes ┤            ├─ think ── how they relate to ┼─ reflections
+              │                │            ├─ one note for each idea      ╰─ interests
+              │                │            │                        ╭─ full sentences
+              │                │            │                        ├─ sources
+              │                ╰─ permanent ┼─ as for another person ┼─ links
+              ├─ turn into draft            ├─ discard ── fleeting   ├─ precisely
+              ╰─ edit                       │                        ├─ clearly
+                                            │                        ╰─ briefly
+                                            ├─ add ┬─ behind the note it relates to directly
+                                            │      ╰─ links
+                                            ╰─ make sure ── you can find it ┬─ in the index
+                                                                            ╰─ at entry point
 #+end_mindmap
 #+end_src
 
+One more map, from another book: Ervand Abrahamian. A History of Modern Iran.
+#+begin_src 
+#+begin_mindmap
+                                  constant ─╮
+                        3 x France ─┬ size ─┤
+                            6 x UK ─╯       │
+                     Persian Gulf ── south ─┤
+          Khurasan ─╮                       │                                   ╭─ (property) ── (beg XX) ── (beg XXI)
+            Sistan ─┼ mountains of ── east ─┤                                   ├─ population ── 12 mln ── 69 mln
+       Baluchestan ─╯                       │                                   ├─ .. village ── 60% ── <30%
+             Shatt al-Arab marshes ─┬ west ─┤                                   ├─ .. nomads ── 25% ── 3%
+                 Kurdish mountains ─╯       ├ Geography ── ◀ Iran ▶ ── Identity ┼─ .. urban ── 15% ── 66%
+                   Aras ─┬ rivers ── north ─┤                                   ├─ .. of Tehran ── 200k ── 6.5mln
+                  Artak ─╯                  │                                   ├─ life expectancy ── 30y ── 70y
+                         rainfall ── lacks ─┤                                   ├─ child mortality ── 50% ── 3%
+             Azerbaijan ─╮                  │                                   ├─ literacy ── 5% ── 85%
+              Kurdestan ─┤                  │                                   ╰─ .. in Persian ── <50% ── >85%
+          Caspian coast ─┼ only ── farming ─╯
+     irrigated villages ─┤
+near mountains ── oases ─╯
+#+end_mindmap
+#+end_src
