@@ -1,0 +1,73 @@
+* Test Case 1: Empty Root, Right-sided :layout left
+#+begin_sexp
+("" nil
+ ("Node A" right)
+ ("Node B" right ("Node C" right) ("Node D" right))
+ ("Node E" right))
+#+end_sexp
+#+begin_expected
+◀▶ ┬─ Node A
+   ├─ Node B ┬─ Node C
+   │         ╰─ Node D
+   ╰─ Node E
+#+end_expected
+
+* Test Case 2: Explicit Root, Left-sided :layout left
+#+begin_sexp
+("Root" nil
+ ("Node A" left)
+ ("Node B" left ("Node C" left) ("Node D" left))
+ ("Node E" left))
+#+end_sexp
+#+begin_expected
+          Node A ─┬ ◀ Root ▶
+Node C ─┬ Node B ─┤
+Node D ─╯         │
+          Node E ─╯
+#+end_expected
+
+* Test Case 3: Bidirectional Empty Root (Centered)
+#+begin_sexp
+("" nil
+ ("Left 1" left)
+ ("Left 2" left)
+ ("Right 1" right)
+ ("Right 2" right))
+#+end_sexp
+#+begin_expected
+Left 1 ─┬ ◀▶ ┬─ Right 1
+Left 2 ─╯    ╰─ Right 2
+#+end_expected
+
+* Test Case 4: Complex Bidirectional (Centered)
+#+begin_sexp
+("Iran" nil 
+ ("One" left)
+ ("Two" left)
+ ("Three" left)
+ ("Geography" right ("constant" right) ("size" right ("3 x France" right) ("6 x UK" right)) ("south" right ("Persian Gulf" right)) ("east" right ("mountains of" right ("Khurasan" right) ("Sistan" right) ("Baluchestan" right))) ("west" right))
+ ("Identity" right))
+#+end_sexp
+#+begin_expected
+  One ─╮                       ╭─ constant
+  Two ─┤                       ├─ size ┬─ 3 x France
+Three ─┴ ◀ Iran ▶ ╮            │       ╰─ 6 x UK
+                  ├─ Geography ┼─ south ── Persian Gulf
+                  ╰─ Identity  │                       ╭─ Khurasan
+                               ├─ east ── mountains of ┼─ Sistan
+                               ╰─ west                 ╰─ Baluchestan
+#+end_expected
+
+* Test Case 5: Bidirectional Empty Root (Left Layout) :layout left
+#+begin_sexp
+("" nil
+ ("Identity" left ("west" left) ("east" left))
+ ("Geography" left ("south" left) ("size" left) ("constant" left)))
+#+end_sexp
+#+begin_expected
+     west ─┬ Identity ─┬ ◀▶
+     east ─╯           │
+   south ─┬ Geography ─╯
+    size ─┤
+constant ─╯
+#+end_expected
