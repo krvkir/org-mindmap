@@ -47,7 +47,7 @@
   :type 'integer
   :group 'org-mindmap)
 
-(defcustom org-mindmap-parser-root-delimiters '("◀" . "▶")
+(defcustom org-mindmap-parser-root-delimiters '("⏴" . "⏵")
   "A cons cell containing the left and right delimiter strings for a root node.
 Use symbols you don't directly type, such as unicode plotting character."
   :type '(cons string string)

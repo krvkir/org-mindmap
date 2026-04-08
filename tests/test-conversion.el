@@ -12,7 +12,7 @@
     (org-mindmap-list-to-mindmap)
     (goto-char (point-min))
     (should (re-search-forward "#\\+begin_mindmap" nil t))
-    (should (re-search-forward "◀ My Mindmap ▶" nil t))
+    (should (re-search-forward "⏴ My Mindmap ⏵" nil t))
     (should (re-search-forward "Item 1.1" nil t))
     ;; Now convert back
     (org-mindmap-to-list)
@@ -84,7 +84,7 @@
         (org-mindmap-list-to-mindmap)
         ;; Verify Root was preserved correctly
         (goto-char (point-min))
-        (should (re-search-forward "◀ Root ▶" nil t))
+        (should (re-search-forward "⏴ Root ⏵" nil t))
         (goto-char (point-min))
         (should (re-search-forward "Hello" nil t))
         (goto-char (point-min))
@@ -102,7 +102,7 @@
     (goto-char (point-min))
     (org-mindmap-list-to-mindmap)
     (goto-char (point-min))
-    (should (re-search-forward "◀▶" nil t))
+    (should (re-search-forward "⏴⏵" nil t))
     (goto-char (point-min))
     (should (re-search-forward "Right" nil t))
     (goto-char (point-min))

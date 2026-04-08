@@ -345,7 +345,7 @@
 
 * Test Case 15: Explicit Root Bidirectional
 #+begin_mindmap
-  Left ── ◀ Root ▶ ── Right
+  Left ── ⏴ Root ⏵ ── Right
 #+end_mindmap
 #+begin_expected
     - Root (row:0, col:10, side:nil)
@@ -358,7 +358,7 @@
                           ╭─ constant
                           ├─ size ┬─ 3 x France
    One ─┐                 │       ╰─ 6 x UK
-  Two ──┼ ◀▶ ┬─ Geography ┼─ south ── Persian Gulf
+  Two ──┼ ⏴⏵ ┬─ Geography ┼─ south ── Persian Gulf
  Three ─┘    ╰─ Identity  │                       ╭─ Khurasan
                           ├─ east ── mountains of ┼─ Sistan
                           ╰─ west                 ╰─ Baluchestan
@@ -389,7 +389,7 @@
                                 ╭─ constant
                                 ├─ size ┬─ 3 x France
   One ─┐                        │       ╰─ 6 x UK
-  Two ─┼─ ◀ Iran ▶ ┬─ Geography ┼─ south ── Persian Gulf
+  Two ─┼─ ⏴ Iran ⏵ ┬─ Geography ┼─ south ── Persian Gulf
 Three ─┘           ╰─ Identity  │                       ╭─ Khurasan
                                 ├─ east ── mountains of ┼─ Sistan
                                 ╰─ west                 ╰─ Baluchestan

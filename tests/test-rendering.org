@@ -6,7 +6,7 @@
  ("Node E" right))
 #+end_sexp
 #+begin_expected
-◀▶ ┬─ Node A
+⏴⏵ ┬─ Node A
    ├─ Node B ┬─ Node C
    │         ╰─ Node D
    ╰─ Node E
@@ -20,7 +20,7 @@
  ("Node E" left))
 #+end_sexp
 #+begin_expected
-          Node A ─┬ ◀ Root ▶
+          Node A ─┬ ⏴ Root ⏵
 Node C ─┬ Node B ─┤
 Node D ─╯         │
           Node E ─╯
@@ -35,7 +35,7 @@ Node D ─╯         │
  ("Right 2" right))
 #+end_sexp
 #+begin_expected
-Left 1 ─┬ ◀▶ ┬─ Right 1
+Left 1 ─┬ ⏴⏵ ┬─ Right 1
 Left 2 ─╯    ╰─ Right 2
 #+end_expected
 
@@ -52,7 +52,7 @@ Left 2 ─╯    ╰─ Right 2
                                ╭─ constant
                                ├─ size ┬─ 3 x France
   One ─╮                       │       ╰─ 6 x UK
-  Two ─┼ ◀ Iran ▶ ┬─ Geography ┼─ south ── Persian Gulf
+  Two ─┼ ⏴ Iran ⏵ ┬─ Geography ┼─ south ── Persian Gulf
 Three ─╯          ╰─ Identity  │                       ╭─ Khurasan
                                ├─ east ── mountains of ┼─ Sistan
                                ╰─ west                 ╰─ Baluchestan
@@ -65,7 +65,7 @@ Three ─╯          ╰─ Identity  │                       ╭─ Khurasan
  ("Geography" left ("south" left) ("size" left) ("constant" left)))
 #+end_sexp
 #+begin_expected
-     west ─┬ Identity ─┬ ◀▶
+     west ─┬ Identity ─┬ ⏴⏵
      east ─╯           │
    south ─┬ Geography ─╯
     size ─┤
