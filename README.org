@@ -2,14 +2,12 @@
 
 Editable mind maps for Org.
 
-#+begin_src
 #+begin_mindmap
                                      ╭─ consectetur ── ut labore
-   dolor sit amet ─┬ ◀ Lorem ipsum ▶ ┤                          ╭─ eiusmod
+   dolor sit amet ─┬ ⏴ Lorem ipsum ⏵ ┤                          ╭─ eiusmod
 Per Org ad astra! ─╯                 ├─ adipiscing elit, sed do ┼─ tempor
                                      ╰─ et dolore magna aliqua. ╰─ incididunt
 #+end_mindmap
-#+end_src
 
 [[./img/demo.gif]]
 
@@ -46,7 +44,7 @@ Root node
 Press =C-c C-c= to redraw the map. Root node brackets should be added:
 #+begin_src
 #+begin_mindmap
-◀ Root node ▶
+⏴ Root node ⏵
 #+end_mindmap
 #+end_src
 
@@ -54,7 +52,7 @@ Add several child nodes with =TAB= and siblings with =RET=:
 #+begin_src
 #+begin_mindmap
               ╭─ First node
-◀ Root node ▶ ┼─ Second node
+⏴ Root node ⏵ ┼─ Second node
               ╰─ Third node
 #+end_mindmap
 #+end_src
@@ -64,7 +62,7 @@ Edit the text of a node at point with =M-RET=: this will preserve the layout. Or
 Move nodes around with =M-<up>=, =M-<down>=, =M-<left>= and =M-<right>=. Put the cursor on the node text and press one of those keys:
 #+begin_src
 #+begin_mindmap
-Second node ─┬ ◀ Root node ▶ ┬─ First node
+Second node ─┬ ⏴ Root node ⏵ ┬─ First node
 Fourth node ─╯               ╰─ Third node
 #+end_mindmap
 #+end_src
@@ -113,7 +111,7 @@ If you have a list, you can transform it to mindmap with =org-mindmap-list-to-mi
 #+begin_mindmap
    ╭─ For want of a nail ── the shoe was lost,
    ├─ For want of a shoe ── the horse was lost,
-◀▶ ┼─ For want of a horse ── the rider was lost,
+⏴⏵ ┼─ For want of a horse ── the rider was lost,
    ├─ For want of a rider ── the battle was lost,
    ├─ For want of a battle ── the kingdom was lost,
    ╰─ And all for the want ── of horseshoe nail.
@@ -130,7 +128,7 @@ There are three layouts:
 1. =left=, the simplest and the default one
 #+begin_src 
 ,#+begin_mindmap :layout left
-◀▶ ┬─ root ng ┬─ node b ┬─ node d
+⏴⏵ ┬─ root ng ┬─ node b ┬─ node d
    │          │         ├─ node c
    │          │         ╰─ node e ── node f
    │          ╰─ node a
@@ -142,7 +140,7 @@ There are three layouts:
 2. =compact=, the one where nodes float up if there's space for them (like node a here).
 #+begin_src 
 ,#+begin_mindmap :layout compact
-◀▶ ┬─ root ng ┬─ node b ┬─ node d
+⏴⏵ ┬─ root ng ┬─ node b ┬─ node d
    │          ╰─ node a ├─ node c
    │                    ╰─ node e ── node f
    ╰─ disk c: ┬─ Windows
@@ -155,7 +153,7 @@ There are three layouts:
 ,#+begin_mindmap :layout centered
                         ╭─ node d
    ╭─ root ng ┬─ node b ┼─ node c
-◀▶ ┤          ╰─ node a ╰─ node e ── node f
+⏴⏵ ┤          ╰─ node a ╰─ node e ── node f
    ╰─ disk c: ┬─ Windows
               ╰─ Users
 ,#+end_mindmap
@@ -179,7 +177,7 @@ Here's one more complex example mindmap for a chapter from Sönke Ahrens — How
    │                           │             ├─ in your own words
    │                           │             ├─ with bibliographic data
    │                           │             ╰─ put to the reference system
-◀▶ ┤                           │                            ╭─ feeting
+⏴⏵ ┤                           │                            ╭─ feeting
    │                           │            ╭─ review notes ┼─ literature
    │                           │            │               ╰─ once a day  ╭─ research
    ╰─ Process ┬─ collect notes ┤            ├─ think ── how they relate to ┼─ reflections
@@ -208,7 +206,7 @@ One more map, from another book: Ervand Abrahamian. A History of Modern Iran.
             Sistan ─┼ mountains of ── east ─┤                                   ├─ population ── 12 mln ── 69 mln
        Baluchestan ─╯                       │                                   ├─ .. village ── 60% ── <30%
              Shatt al-Arab marshes ─┬ west ─┤                                   ├─ .. nomads ── 25% ── 3%
-                 Kurdish mountains ─╯       ├ Geography ── ◀ Iran ▶ ── Identity ┼─ .. urban ── 15% ── 66%
+                 Kurdish mountains ─╯       ├ Geography ── ⏴ Iran ⏵ ── Identity ┼─ .. urban ── 15% ── 66%
                    Aras ─┬ rivers ── north ─┤                                   ├─ .. of Tehran ── 200k ── 6.5mln
                   Artak ─╯                  │                                   ├─ life expectancy ── 30y ── 70y
                          rainfall ── lacks ─┤                                   ├─ child mortality ── 50% ── 3%
