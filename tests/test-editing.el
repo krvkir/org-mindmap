@@ -108,3 +108,54 @@
     (with-org-mindmap-test initial "Node A"
                            (lambda ()
                              (should-error (org-mindmap-demote))))))
+
+(ert-deftest org-mindmap-test-promote-subtree-across-root ()
+  "Test that promoting a node with children across the root updates children's sides."
+  (let ((initial "◀▶ ── Parent ── Child"))
+    ;; Start with Parent on the right. Promote it to the left.
+    (with-org-mindmap-test initial "Parent" #'org-mindmap-promote
+      (let ((content (org-mindmap-test-get-content)))
+        ;; Parent should now be on the left
+        (should (string-match-p "Child ── Parent ── ◀▶" content))
+        ;; Verify parser sees both as left
+        (let* ((region (org-mindmap-parser-get-region))
+               (roots (org-mindmap-parser-parse-region (car region) (cdr region)))
+               (parent (cl-find "Parent" (org-mindmap-parser-node-children (car roots))
+                                :key #'org-mindmap-parser-node-text :test #'string=)))
+          (should (eq (org-mindmap-parser-node-side parent) 'left))
+          (should (eq (org-mindmap-parser-node-side (car (org-mindmap-parser-node-children parent))) 'left)))))))
+
+(ert-deftest org-mindmap-test-promote-side-swap-inheritance ()
+  "Test that promoting a top-level node from the right to the left side updates subtree sides."
+  (let ((initial "LeftParent ── ◀▶ ── RightParent ── RightChild"))
+    ;; Move RightParent to the left side using promote
+    (with-org-mindmap-test initial "RightParent" #'org-mindmap-promote
+      (let ((content (org-mindmap-test-get-content)))
+        ;; Visual check: RightChild should now be to the left of RightParent
+        (should (string-match-p "RightChild [─]+ RightParent" content))
+        ;; Parser check
+        (let* ((region (org-mindmap-parser-get-region))
+               (roots (org-mindmap-parser-parse-region (car region) (cdr region)))
+               (root (car roots))
+               (r-parent (cl-find "RightParent" (org-mindmap-parser-node-children root)
+                                 :key #'org-mindmap-parser-node-text :test #'string=))
+               (r-child (car (org-mindmap-parser-node-children r-parent))))
+          (should (eq (org-mindmap-parser-node-side r-parent) 'left))
+          (should (eq (org-mindmap-parser-node-side r-child) 'left)))))))
+
+(ert-deftest org-mindmap-test-promote-deep-inheritance ()
+  "Test that promoting a node from depth 3 to depth 2 inherits grandparent's side."
+  (let ((initial "◀▶ ── LeftParent ── LeftChild ── SubChild ── Leaf"))
+    ;; Note: LeftParent is initially on the right side in this string
+    ;; Promote SubChild to be sibling of LeftChild (under LeftParent)
+    (with-org-mindmap-test initial "SubChild" #'org-mindmap-promote
+      (let* ((region (org-mindmap-parser-get-region))
+             (roots (org-mindmap-parser-parse-region (car region) (cdr region)))
+             (root (car roots))
+             (l-parent (cl-find "LeftParent" (org-mindmap-parser-node-children root)
+                               :key #'org-mindmap-parser-node-text :test #'string=))
+             (sub-child (cl-find "SubChild" (org-mindmap-parser-node-children l-parent)
+                                :key #'org-mindmap-parser-node-text :test #'string=))
+             (leaf (car (org-mindmap-parser-node-children sub-child))))
+        (should (eq (org-mindmap-parser-node-side sub-child) 'right))
+        (should (eq (org-mindmap-parser-node-side leaf) 'right))))))
