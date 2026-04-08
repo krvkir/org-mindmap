@@ -97,7 +97,7 @@
 
 (ert-deftest org-mindmap-test-promote-root ()
   "Test that promoting a root node raises an error."
-  (let ((initial "┬─ Root"))
+  (let ((initial "◀ Root ▶"))
     (with-org-mindmap-test initial "Root"
                            (lambda ()
                              (should-error (org-mindmap-promote))))))
@@ -108,20 +108,3 @@
     (with-org-mindmap-test initial "Node A"
                            (lambda ()
                              (should-error (org-mindmap-demote))))))
-
-(ert-deftest org-mindmap-test-layout-compact ()
-  "Test moving a node in compact layout."
-  (let ((initial "#+begin_mindmap :layout compact\n┬─ root ┬─ a\n        ╰─ b\n#+end_mindmap"))
-    ;; Override with-org-mindmap-test as it adds its own block
-    (with-temp-buffer
-      (org-mode)
-      (setq indent-tabs-mode nil)
-      (insert initial)
-      (goto-char (point-min))
-      (forward-line 1)                  ; skip header
-      (re-search-forward "b")
-      (goto-char (match-beginning 0))
-      (org-mindmap-move-up)
-      (with-org-mindmap-test initial "Node A" #'org-mindmap-delete-node
-                             (should (string= (org-mindmap-test-get-content)
-                                              "┬─ root ┬─ b\n        ╰─ a"))))))

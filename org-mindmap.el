@@ -506,7 +506,8 @@ Accepts LAYOUT and SPACING."
             (lambda (node)
               (let* ((r (org-mindmap-parser-node-row node))
                      (c (org-mindmap-parser-node-col node))
-                     (len (length (org-mindmap-parser-node-text node))))
+                     (display-text (org-mindmap--node-display-text node))
+                     (len (string-width display-text)))
                 (when (and (= row r) (>= col c) (<= col (+ c len)))
                   (throw 'found node)))
               (mapc traverse (org-mindmap-parser-node-children node))))
@@ -565,12 +566,19 @@ Accepts LAYOUT and SPACING."
 
 (defun org-mindmap-insert-child (&optional text)
   "Create new child node with optional TEXT under node at cursor position.
-If TEXT is nil or empty, creates an empty node for immediate editing."
+If TEXT is nil or empty, creates an empty node for immediate editing.
+With prefix argument at root node, creates a child on the left side."
   (interactive (list (read-string "Child text: ")))
   (setq text (or text ""))
   (cl-destructuring-bind (start end roots target-node) (org-mindmap--get-state)
     (unless target-node (error "No node at point"))
-    (let ((new-node (org-mindmap-parser-make-node :id (cl-gensym "node") :text text :parent target-node)))
+    (let* ((side (if (null (org-mindmap-parser-node-parent target-node))
+                     (if current-prefix-arg 'left 'right)
+                   (org-mindmap-parser-node-side target-node)))
+           (new-node (org-mindmap-parser-make-node :id (cl-gensym "node") 
+                                                   :text text 
+                                                   :parent target-node
+                                                   :side side)))
       (setf (org-mindmap-parser-node-children target-node)
             (append (org-mindmap-parser-node-children target-node) (list new-node)))
       (let* ((props (org-mindmap--parse-properties start))
@@ -602,19 +610,19 @@ If TEXT is nil or empty, creates an empty node for immediate editing."
 
 (defun org-mindmap-insert-root (&optional text)
   "Create new root node with optional TEXT at end of existing roots.
-If TEXT is nil or empty, creates an empty node for immediate editing."
+If TEXT is nil or empty, creates an empty node for immediate editing.
+In the single-root model, this is only allowed if no root exists."
   (interactive (list (read-string "Root text: ")))
   (setq text (or text ""))
   (cl-destructuring-bind (start end roots target-node) (org-mindmap--get-state)
-    (unless target-node (error "No node at point"))
-    (unless (null (org-mindmap-parser-node-parent target-node))
-      (error "Cannot insert root from a child node"))
-    (let ((new-node (org-mindmap-parser-make-node :id (cl-gensym "node") :text text)))
-      (setq roots (append roots (list new-node)))
-      (let* ((props (org-mindmap--parse-properties start))
-             (layout (intern (or (plist-get props :layout) (symbol-name org-mindmap-default-layout))))
-             (spacing (string-to-number (or (plist-get props :spacing) (number-to-string org-mindmap-spacing)))))
-        (org-mindmap--update-buffer start end roots (org-mindmap-parser-node-id new-node) layout spacing)))))
+    (if (and roots (> (length roots) 0))
+        (user-error "A root node already exists. This mindmap only supports a single root.")
+      (let ((new-node (org-mindmap-parser-make-node :id (cl-gensym "node") :text text)))
+        (setq roots (list new-node))
+        (let* ((props (org-mindmap--parse-properties start))
+               (layout (intern (or (plist-get props :layout) (symbol-name org-mindmap-default-layout))))
+               (spacing (string-to-number (or (plist-get props :spacing) (number-to-string org-mindmap-spacing)))))
+          (org-mindmap--update-buffer start end roots (org-mindmap-parser-node-id new-node) layout spacing))))))
 
 (defun org-mindmap-delete-node ()
   "Remove node at cursor position and all descendants."
@@ -655,13 +663,14 @@ If TEXT is nil or empty, creates an empty node for immediate editing."
 
 (defun org-mindmap-validate-move (operation target-node siblings pos)
   "Validate that move OPERATION is legal for TARGET-NODE with SIBLINGS at POS."
+  (when (null (org-mindmap-parser-node-parent target-node))
+    (user-error "Cannot move the root node"))
   (pcase operation
     ('up (when (or (null pos) (= pos 0))
            (user-error "Cannot move up: already first sibling")))
     ('down (when (or (null pos) (= pos (1- (length siblings))))
              (user-error "Cannot move down: already last sibling")))
-    ('promote (when (null (org-mindmap-parser-node-parent target-node))
-                (user-error "Cannot promote: already a root node")))
+    ('promote nil) ; Promotion of top-level child is now side-shift, so it's always valid
     ('demote (when (or (null pos) (= pos 0))
                (user-error "Cannot demote: requires a previous sibling")))))
 
@@ -702,24 +711,34 @@ If TEXT is nil or empty, creates an empty node for immediate editing."
         (org-mindmap--update-buffer start end roots (org-mindmap-parser-node-id target-node) layout spacing)))))
 
 (defun org-mindmap-promote ()
-  "Move node up one level (becomes sibling of parent)."
+  "Move node up one level (becomes sibling of parent) or shift side if at root."
   (interactive)
   (cl-destructuring-bind (start end roots target-node) (org-mindmap--get-state)
     (unless target-node (error "No node at point"))
     (org-mindmap-validate-move 'promote target-node nil nil)
     (let* ((parent (org-mindmap-parser-node-parent target-node))
            (grandparent (org-mindmap-parser-node-parent parent)))
-      (setf (org-mindmap-parser-node-children parent)
-            (remq target-node (org-mindmap-parser-node-children parent)))
-      (setf (org-mindmap-parser-node-parent target-node) grandparent)
-      (if grandparent
-          (setf (org-mindmap-parser-node-children grandparent)
-                (org-mindmap--insert-after (org-mindmap-parser-node-children grandparent) parent target-node))
-        (setq roots (org-mindmap--insert-after roots parent target-node)))
-      (let* ((props (org-mindmap--parse-properties start))
-             (layout (intern (or (plist-get props :layout) (symbol-name org-mindmap-default-layout))))
-             (spacing (string-to-number (or (plist-get props :spacing) (number-to-string org-mindmap-spacing)))))
-        (org-mindmap--update-buffer start end roots (org-mindmap-parser-node-id target-node) layout spacing)))))
+      (if (null grandparent)
+          ;; Case: target-node is a child of the root node. Shift side.
+          (let ((new-side (if (eq (org-mindmap-parser-node-side target-node) 'left) 'right 'left)))
+            (setf (org-mindmap-parser-node-side target-node) new-side)
+            ;; Move to the end of siblings list to be at the "bottom" of the other side
+            (setf (org-mindmap-parser-node-children parent)
+                  (append (remq target-node (org-mindmap-parser-node-children parent))
+                          (list target-node))))
+        ;; Case: Normal promotion to sibling of parent.
+        (setf (org-mindmap-parser-node-children parent)
+              (remq target-node (org-mindmap-parser-node-children parent)))
+        (setf (org-mindmap-parser-node-parent target-node) grandparent)
+        (setf (org-mindmap-parser-node-children grandparent)
+              (org-mindmap--insert-after (org-mindmap-parser-node-children grandparent) parent target-node))
+        ;; Inherit side from new parent (grandparent) if it has one
+        (when (org-mindmap-parser-node-side grandparent)
+          (setf (org-mindmap-parser-node-side target-node) (org-mindmap-parser-node-side grandparent)))))
+    (let* ((props (org-mindmap--parse-properties start))
+           (layout (intern (or (plist-get props :layout) (symbol-name org-mindmap-default-layout))))
+           (spacing (string-to-number (or (plist-get props :spacing) (number-to-string org-mindmap-spacing)))))
+      (org-mindmap--update-buffer start end roots (org-mindmap-parser-node-id target-node) layout spacing))))
 
 (defun org-mindmap-demote ()
   "Move node down one level (becomes child of previous sibling)."
@@ -738,6 +757,8 @@ If TEXT is nil or empty, creates an empty node for immediate editing."
         (setf (org-mindmap-parser-node-parent target-node) prev-sibling)
         (setf (org-mindmap-parser-node-children prev-sibling)
               (append (org-mindmap-parser-node-children prev-sibling) (list target-node)))
+        ;; Inherit side from new parent
+        (setf (org-mindmap-parser-node-side target-node) (org-mindmap-parser-node-side prev-sibling))
         (let* ((props (org-mindmap--parse-properties start))
                (layout (intern (or (plist-get props :layout) (symbol-name org-mindmap-default-layout))))
                (spacing (string-to-number (or (plist-get props :spacing) (number-to-string org-mindmap-spacing)))))
@@ -961,13 +982,19 @@ Uses INDENT for the level. If `SIDE-FILTER' is set, only include nodes of that s
 (defun org-mindmap--promote ()
   "Hijack M-<left> if inside a mindmap region."
   (when (org-mindmap-parser-region-active-p)
-    (org-mindmap-promote)
+    (let ((node (org-mindmap-find-node-at-point)))
+      (if (and node (eq (org-mindmap-parser-node-side node) 'left))
+          (org-mindmap-demote)
+        (org-mindmap-promote)))
     t))
 
 (defun org-mindmap--demote ()
   "Hijack M-<right> if inside a mindmap region."
   (when (org-mindmap-parser-region-active-p)
-    (org-mindmap-demote)
+    (let ((node (org-mindmap-find-node-at-point)))
+      (if (and node (eq (org-mindmap-parser-node-side node) 'left))
+          (org-mindmap-promote)
+        (org-mindmap-demote)))
     t))
 
 (defun org-mindmap--align ()
