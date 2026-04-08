@@ -49,11 +49,11 @@ Left 2 ─╯    ╰─ Right 2
  ("Identity" right))
 #+end_sexp
 #+begin_expected
-  One ─╮                       ╭─ constant
-  Two ─┤                       ├─ size ┬─ 3 x France
-Three ─┴ ◀ Iran ▶ ╮            │       ╰─ 6 x UK
-                  ├─ Geography ┼─ south ── Persian Gulf
-                  ╰─ Identity  │                       ╭─ Khurasan
+                               ╭─ constant
+                               ├─ size ┬─ 3 x France
+  One ─╮                       │       ╰─ 6 x UK
+  Two ─┼ ◀ Iran ▶ ┬─ Geography ┼─ south ── Persian Gulf
+Three ─╯          ╰─ Identity  │                       ╭─ Khurasan
                                ├─ east ── mountains of ┼─ Sistan
                                ╰─ west                 ╰─ Baluchestan
 #+end_expected

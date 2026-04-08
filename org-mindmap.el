@@ -164,76 +164,74 @@ Requires COL, LAYOUT, and SPACING."
   (let* ((display-text (org-mindmap--node-display-text node))
          (text-len (string-width display-text))
          (children (org-mindmap-parser-node-children node)))
-
     (setf (org-mindmap-parser-node-col node) col)
-
     (if (null children)
         (progn
           (setf (org-mindmap-parser-node-row node) 0)
           (list 0 0 (list node)))
-
       (let* ((global-occupied-map (make-hash-table :test 'eq))
-             (all-nodes nil)
              (left-children (cl-remove-if-not (lambda (ch) (eq (org-mindmap-parser-node-side ch) 'left)) children))
-             (right-children (cl-remove-if (lambda (ch) (eq (org-mindmap-parser-node-side ch) 'left)) children)))
-
-        (dolist (side-children (list left-children right-children))
-          (let ((prev-child-row nil))
+             (right-children (cl-remove-if (lambda (ch) (eq (org-mindmap-parser-node-side ch) 'left)) children))
+             (left-side-nodes nil)
+             (right-side-nodes nil))
+        (dolist (side (list 'left 'right))
+          (let ((side-children (if (eq side 'left) left-children right-children))
+                (prev-child-row nil))
             (dolist (child side-children)
               (let* ((c-side (org-mindmap-parser-node-side child))
                      (c-display (org-mindmap--node-display-text child))
                      (c-len (string-width c-display))
-                     (child-col (if (eq c-side 'left)
-                                    (- col 4 c-len)
-                                  (+ col text-len 4))))
-                (cl-destructuring-bind (c-min _ c-nodes)
+                     (child-col (if (eq c-side 'left) (- col 4 c-len) (+ col text-len 4))))
+                (cl-destructuring-bind (c-min _c-max c-nodes)
                     (org-mindmap-build-subtree child child-col layout spacing)
-
                   (let* ((c-root-row (org-mindmap-parser-node-row child))
-                         (min-delta (if prev-child-row
-                                        (+ prev-child-row 1 (- c-root-row))
-                                      (- c-min)))
+                         (min-delta (if prev-child-row (+ prev-child-row 1 (- c-root-row)) (- c-min)))
                          (delta min-delta))
-
                     (if (eq layout 'left)
-                        (let ((side-nodes (cl-remove-if-not (lambda (n) (eq (org-mindmap-parser-node-side n) c-side)) all-nodes)))
-                          (setq delta (if side-nodes
-                                          (+ (apply #'max (mapcar #'org-mindmap-parser-node-row side-nodes)) 1 (- c-min))
+                        (let ((all-side-nodes (if (eq side 'left) left-side-nodes right-side-nodes)))
+                          (setq delta (if all-side-nodes
+                                          (+ (apply #'max (mapcar #'org-mindmap-parser-node-row all-side-nodes)) 1 (- c-min))
                                         (- c-min))))
                       (let ((c-nodes-occ (org-mindmap--get-occupied c-nodes spacing)))
                         (while (org-mindmap--check-overlap-subtree c-nodes-occ delta global-occupied-map)
                           (cl-incf delta))))
-
                     (dolist (n c-nodes)
                       (setf (org-mindmap-parser-node-row n) (+ (org-mindmap-parser-node-row n) delta)))
-
                     (let ((c-nodes-occ (org-mindmap--get-occupied c-nodes spacing)))
                       (dolist (o c-nodes-occ)
                         (push (cons (nth 1 o) (nth 2 o)) (gethash (nth 0 o) global-occupied-map))))
-
                     (setq prev-child-row (org-mindmap-parser-node-row child))
-                    (setq all-nodes (append all-nodes c-nodes))))))))
-
-        (let* ((left-first (if left-children (org-mindmap-parser-node-row (car left-children)) nil))
-               (left-last (if left-children (org-mindmap-parser-node-row (car (last left-children))) nil))
-               (right-first (if right-children (org-mindmap-parser-node-row (car right-children)) nil))
-               (right-last (if right-children (org-mindmap-parser-node-row (car (last right-children))) nil))
-               (all-first (if (and left-first right-first) (min left-first right-first) (or left-first right-first)))
-               (all-last (if (and left-last right-last) (max left-last right-last) (or left-last right-last))))
-          (setf (org-mindmap-parser-node-row node)
-                (if (eq layout 'centered)
-                    (/ (+ all-first all-last) 2)
-                  all-first)))
-
-        (push node all-nodes)
-
-        (let ((min-r (apply #'min (mapcar #'org-mindmap-parser-node-row all-nodes)))
-              (max-r (apply #'max (mapcar #'org-mindmap-parser-node-row all-nodes))))
-          (unless (= min-r 0)
-            (dolist (n all-nodes)
-              (setf (org-mindmap-parser-node-row n) (- (org-mindmap-parser-node-row n) min-r)))
-            (setq max-r (- max-r min-r)))
-          (list 0 max-r all-nodes))))))
+                    (if (eq side 'left)
+                        (setq left-side-nodes (append left-side-nodes c-nodes))
+                      (setq right-side-nodes (append right-side-nodes c-nodes)))))))))
+        (let* ((l-nodes left-side-nodes)
+               (r-nodes right-side-nodes)
+               (l-min (if l-nodes (apply #'min (mapcar #'org-mindmap-parser-node-row l-nodes)) 0))
+               (l-max (if l-nodes (apply #'max (mapcar #'org-mindmap-parser-node-row l-nodes)) 0))
+               (r-min (if r-nodes (apply #'min (mapcar #'org-mindmap-parser-node-row r-nodes)) 0))
+               (r-max (if r-nodes (apply #'max (mapcar #'org-mindmap-parser-node-row r-nodes)) 0))
+               (m-l (/ (+ l-min l-max) 2))
+               (m-r (/ (+ r-min r-max) 2))
+               (root-row 0))
+          (if (eq layout 'centered)
+              (progn
+                (setq root-row (max m-l m-r))
+                (let ((l-shift (- root-row m-l))
+                      (r-shift (- root-row m-r)))
+                  (dolist (n l-nodes) (cl-incf (org-mindmap-parser-node-row n) l-shift))
+                  (dolist (n r-nodes) (cl-incf (org-mindmap-parser-node-row n) r-shift))))
+            (let* ((l-first (if left-children (org-mindmap-parser-node-row (car left-children)) nil))
+                   (r-first (if right-children (org-mindmap-parser-node-row (car right-children)) nil)))
+              (setq root-row (if (and l-first r-first) (min l-first r-first) (or l-first r-first 0)))))
+          (setf (org-mindmap-parser-node-row node) root-row)
+          (let* ((all-nodes (append (list node) l-nodes r-nodes))
+                 (min-r (apply #'min (mapcar #'org-mindmap-parser-node-row all-nodes)))
+                 (max-r (apply #'max (mapcar #'org-mindmap-parser-node-row all-nodes))))
+            (unless (= min-r 0)
+              (dolist (n all-nodes)
+                (setf (org-mindmap-parser-node-row n) (- (org-mindmap-parser-node-row n) min-r)))
+              (setq max-r (- max-r min-r)))
+            (list 0 max-r all-nodes)))))))
 
 (defun org-mindmap-build-tree-layout (roots layout spacing)
   "Assigns row and col to all nodes in ROOTS using LAYOUT and SPACING."
@@ -296,7 +294,8 @@ Requires COL, LAYOUT, and SPACING."
       raw-text)))
 
 (defun org-mindmap--connector-symbol (has-above has-below has-left has-right)
-  "Determine the correct box-drawing character based on connection directions."
+  "Determine correct box-drawing character based on connection directions.
+HAS-ABOVE, HAS-BELOW, HAS-LEFT, HAS-RIGHT are booleans."
   (cond
    ((and has-above has-below has-left has-right) "┼")
    ((and has-above has-below has-left (not has-right)) "┤")
@@ -335,7 +334,7 @@ Requires COL, LAYOUT, and SPACING."
             (insert (org-mindmap--propertize-text " ")))
           (insert (org-mindmap--propertize-connector r-delim)))
       (insert (org-mindmap--propertize-text text)))
-    
+
     ;; Draw left children
     (when left-children
       (let* ((conn-c (- c 2))
@@ -574,8 +573,8 @@ With prefix argument at root node, creates a child on the left side."
     (let* ((side (if (null (org-mindmap-parser-node-parent target-node))
                      (if current-prefix-arg 'left 'right)
                    (org-mindmap-parser-node-side target-node)))
-           (new-node (org-mindmap-parser-make-node :id (cl-gensym "node") 
-                                                   :text text 
+           (new-node (org-mindmap-parser-make-node :id (cl-gensym "node")
+                                                   :text text
                                                    :parent target-node
                                                    :side side)))
       (setf (org-mindmap-parser-node-children target-node)
@@ -593,8 +592,8 @@ If TEXT is nil or empty, creates an empty node for immediate editing."
   (cl-destructuring-bind (start end roots target-node) (org-mindmap--get-state)
     (unless target-node (error "No node at point"))
     (let* ((parent (org-mindmap-parser-node-parent target-node))
-           (new-node (org-mindmap-parser-make-node :id (cl-gensym "node") 
-                                                   :text text 
+           (new-node (org-mindmap-parser-make-node :id (cl-gensym "node")
+                                                   :text text
                                                    :parent parent
                                                    :side (if target-node (org-mindmap-parser-node-side target-node) 'right))))
       (if parent
@@ -613,9 +612,9 @@ If TEXT is nil or empty, creates an empty node for immediate editing.
 In the single-root model, this is only allowed if no root exists."
   (interactive (list (read-string "Root text: ")))
   (setq text (or text ""))
-  (cl-destructuring-bind (start end roots target-node) (org-mindmap--get-state)
+  (cl-destructuring-bind (start end roots _target-node) (org-mindmap--get-state)
     (if (and roots (> (length roots) 0))
-        (user-error "A root node already exists. This mindmap only supports a single root.")
+        (user-error "A root node already exists.  This mindmap only supports a single root")
       (let ((new-node (org-mindmap-parser-make-node :id (cl-gensym "node") :text text)))
         (setq roots (list new-node))
         (let* ((props (org-mindmap--parse-properties start))
@@ -687,8 +686,8 @@ In the single-root model, this is only allowed if no root exists."
            (pos (cl-position target-node siblings)))
       (org-mindmap-validate-move 'up target-node siblings pos)
       (let ((prev (nth (1- pos) siblings)))
-        (setq all-siblings (org-mindmap--list-swap all-siblings 
-                                                   (cl-position target-node all-siblings) 
+        (setq all-siblings (org-mindmap--list-swap all-siblings
+                                                   (cl-position target-node all-siblings)
                                                    (cl-position prev all-siblings)))
         (if parent
             (setf (org-mindmap-parser-node-children parent) all-siblings)
@@ -710,8 +709,8 @@ In the single-root model, this is only allowed if no root exists."
            (pos (cl-position target-node siblings)))
       (org-mindmap-validate-move 'down target-node siblings pos)
       (let ((next (nth (1+ pos) siblings)))
-        (setq all-siblings (org-mindmap--list-swap all-siblings 
-                                                   (cl-position target-node all-siblings) 
+        (setq all-siblings (org-mindmap--list-swap all-siblings
+                                                   (cl-position target-node all-siblings)
                                                    (cl-position next all-siblings)))
         (if parent
             (setf (org-mindmap-parser-node-children parent) all-siblings)
@@ -785,6 +784,9 @@ In the single-root model, this is only allowed if no root exists."
 (declare-function org-list-get-top-point "org-list")
 (declare-function org-list-to-lisp "org-list")
 (declare-function org-at-item-p "org-list")
+(declare-function org-element-property "org-element")
+(declare-function org-element-type "org-element")
+(declare-function org-element-at-point "org-element")
 
 
 (defun org-mindmap--set-side-recursive (node side)
@@ -795,8 +797,9 @@ In the single-root model, this is only allowed if no root exists."
 
 
 (defun org-mindmap--lisp-to-nodes (lisp-list &optional parent side-override)
-  "Convert an org-list `LISP-LIST' into a list of `org-mindmap-parser-node's.
-If `SIDE-OVERRIDE' is set, all nodes and their descendants get that side."
+  "Convert an org-list LISP-LIST into a list of `org-mindmap-parser-node's.
+The nodes are created as children of PARENT.  If SIDE-OVERRIDE is set,
+all nodes and their descendants get that side."
   (let ((items (cdr lisp-list))
         (nodes nil)
         (current-side (or side-override 'right))
@@ -813,7 +816,7 @@ If `SIDE-OVERRIDE' is set, all nodes and their descendants get that side."
                   (setq is-empty nil)))
             (push elem sublists)
             (setq is-empty nil)))
-        
+
         (if (and is-empty (not side-override) (not pivot-found))
             (setq current-side 'left
                   pivot-found t)
@@ -821,7 +824,7 @@ If `SIDE-OVERRIDE' is set, all nodes and their descendants get that side."
             (let* ((full-text (replace-regexp-in-string
                                "[ \t\n\r]+" " "
                                (string-trim (mapconcat #'identity (nreverse texts) " "))))
-                   (node (org-mindmap-parser-make-node :id (cl-gensym "node") 
+                   (node (org-mindmap-parser-make-node :id (cl-gensym "node")
                                                        :text full-text
                                                        :parent parent
                                                        :side current-side)))
@@ -844,7 +847,7 @@ If `SIDE-OVERRIDE' is set, all nodes and their descendants get that side."
           (when (eq (org-element-type tmp) 'plain-list)
             (setq tmp-list tmp))
           (setq tmp (org-element-property :parent tmp))))
-      
+
       (if tmp-list
           (progn
             (setq list-elem tmp-list)
@@ -865,7 +868,7 @@ If `SIDE-OVERRIDE' is set, all nodes and their descendants get that side."
                                (forward-line 1))
                              (>= (point) list-begin)))
                   (setq paragraph-elem prev)))))
-        
+
         ;; 2. If not inside a list, check if we are on a paragraph followed by a list
         (when (and (eq (org-element-type element) 'paragraph)
                    (not (eq (org-element-type (org-element-property :parent element)) 'item)))
@@ -877,7 +880,7 @@ If `SIDE-OVERRIDE' is set, all nodes and their descendants get that side."
             (if (eq (org-element-type nxt) 'plain-list)
                 (setq list-elem nxt)
               (setq paragraph-elem nil)))))
-      
+
       (when list-elem
         (list (when paragraph-elem
                 (string-trim (buffer-substring-no-properties
@@ -910,7 +913,8 @@ If `SIDE-OVERRIDE' is set, all nodes and their descendants get that side."
 
 (defun org-mindmap--nodes-to-list-string (nodes indent &optional side-filter)
   "Convert a list of `org-mindmap-parser-node's NODES into a plain list string.
-Uses INDENT for the level. If `SIDE-FILTER' is set, only include nodes of that side."
+Uses INDENT for the level.  If SIDE-FILTER is set, only include
+nodes of that side."
   (let ((res nil)
         (prefix (make-string indent ?\ )))
     (dolist (node (if side-filter
@@ -945,7 +949,7 @@ Uses INDENT for the level. If `SIDE-FILTER' is set, only include nodes of that s
           (when (not (string= left-children-str ""))
             (push "-" result-list)
             (push left-children-str result-list))
-          
+
           (save-excursion
             (goto-char start)
             (let ((inhibit-read-only t))
