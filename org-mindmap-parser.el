@@ -122,13 +122,14 @@ If `org-mindmap-parser-debug' is t, format FMT with ARGS."
     nil))
 
 (defun org-mindmap-parser--snaps (lines row col dir)
-  "Return t if char at ROW, COL accepts entry from DIR."
+  "Return t if char in LINES at ROW, COL accepts entry from DIR."
   (let ((char (org-mindmap-parser--grid-get lines row col))
         (entry-port (org-mindmap-parser--invert-dir dir)))
     (member entry-port (org-mindmap-parser--dirs char))))
 
 (defun org-mindmap-parser--glue (lines row col dir)
-  "Attempt to find a connector that snaps for DIR by drifting horizontally."
+  "Attempt to find a connector in LINES snapping for DIR by drifting horizontally.
+Starts from ROW and COL."
   (org-mindmap-parser--debug "Broken link at (%d, %d). Attempting glue for dir %S." row col dir)
   (when (not (= (cdr dir) 0))
     (let ((found nil))
@@ -148,7 +149,8 @@ If `org-mindmap-parser-debug' is t, format FMT with ARGS."
       found)))
 
 (defun org-mindmap-parser--consume-spaces (lines row col dir visited)
-  "Greedily consume non-connector characters in DIR to form a node label."
+  "Greedily consume non-connector characters in LINES in DIR to form a node label.
+Starts from ROW and COL.  VISITED marks the consumed cells."
   (let ((curr-col col)
         (dx (car dir)))
     (if (= dx 0)
@@ -161,8 +163,9 @@ If `org-mindmap-parser-debug' is t, format FMT with ARGS."
         curr-col))))
 
 (defun org-mindmap-parser--consume-node (lines row col dir parent visited side)
-  "Greedily consume non-connector characters in DIR to form a node label.
-SIDE is assigned to the created node."
+  "Greedily consume non-connector characters in LINES in DIR to form a node label.
+Starts from ROW and COL.  SIDE is assigned to the created node with PARENT.
+VISITED marks the consumed cells."
   (let* ((dx (car dir))
          (chars nil)
          (start-col (org-mindmap-parser--consume-spaces lines row col dir visited))
@@ -196,7 +199,9 @@ SIDE is assigned to the created node."
           (cons node (cons row curr-col)))))))
 
 (defun org-mindmap-parser--go (lines row col dir parent visited side)
-  "Recursive 2D walker following connectors and nodes."
+  "Recursive 2D walker following connectors and nodes in LINES.
+Starts from ROW and COL in DIR.  Assigns PARENT and SIDE.
+VISITED keeps track of visited locations."
   (cond
    ((gethash (+ (* row 1000) col) visited)
     (org-mindmap-parser--debug "Stumbled on visited cell at (%d, %d)" row col))
@@ -270,7 +275,7 @@ SIDE is assigned to the created node."
     explicit-root))
 
 (defun org-mindmap-parser--find-implicit-root (lines visited)
-  "Find an implicit root in LINES."
+  "Find an implicit root in LINES.  Mark visited cells in VISITED."
   (let ((height (length lines))
         (implicit-conn-root nil)
         (implicit-text-root nil))
