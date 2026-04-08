@@ -161,7 +161,8 @@ OCCUPIED-MAP is a hash table mapping rows to lists of occupied columns."
 (defun org-mindmap-build-subtree (node col layout spacing)
   "Recursively calculates rows and cols for NODE and its children.
 Requires COL, LAYOUT, and SPACING."
-  (let* ((text-len (string-width (org-mindmap--node-display-text node)))
+  (let* ((display-text (org-mindmap--node-display-text node))
+         (text-len (string-width display-text))
          (children (org-mindmap-parser-node-children node)))
 
     (setf (org-mindmap-parser-node-col node) col)
@@ -180,10 +181,11 @@ Requires COL, LAYOUT, and SPACING."
           (let ((prev-child-row nil))
             (dolist (child side-children)
               (let* ((c-side (org-mindmap-parser-node-side child))
-                     (c-len (string-width (org-mindmap--node-display-text child)))
+                     (c-display (org-mindmap--node-display-text child))
+                     (c-len (string-width c-display))
                      (child-col (if (eq c-side 'left)
-                                    (if (= text-len 0) (- col 3 c-len) (- col 4 c-len))
-                                  (if (= text-len 0) (+ col text-len 3) (+ col text-len 4)))))
+                                    (- col 4 c-len)
+                                  (+ col text-len 4))))
                 (cl-destructuring-bind (c-min _ c-nodes)
                     (org-mindmap-build-subtree child child-col layout spacing)
 
@@ -297,135 +299,100 @@ Requires COL, LAYOUT, and SPACING."
   "Write NODE text and box-drawing connectors onto the buffer canvas."
   (let* ((r (org-mindmap-parser-node-row node))
          (c (org-mindmap-parser-node-col node))
-         (text (org-mindmap--node-display-text node))
-         (text-len (string-width text))
          (children (org-mindmap-parser-node-children node))
          (left-children (cl-remove-if-not (lambda (ch) (eq (org-mindmap-parser-node-side ch) 'left)) children))
-         (right-children (cl-remove-if (lambda (ch) (eq (org-mindmap-parser-node-side ch) 'left)) children)))
+         (right-children (cl-remove-if (lambda (ch) (eq (org-mindmap-parser-node-side ch) 'left)) children))
+         (text (org-mindmap--node-display-text node))
+         (text-len (string-width text)))
     (org-mindmap--move-to r c)
     (let ((end (+ (point) text-len)))
       (delete-region (point) (min end (line-end-position))))
-    (insert (org-mindmap--propertize-text text))
-    
-    (if (= text-len 0)
-        ;; Shared vertical connector for empty root
-        (when children
-          (let* ((conn-c c)
-                 (left-rows (mapcar #'org-mindmap-parser-node-row left-children))
-                 (right-rows (mapcar #'org-mindmap-parser-node-row right-children))
-                 (all-rows (append left-rows right-rows))
-                 (min-y (min (apply #'min all-rows) r))
-                 (max-y (max (apply #'max all-rows) r)))
-            (cl-loop for y from min-y to max-y do
-                     (org-mindmap--move-to y conn-c)
-                     (let* ((has-above (> y min-y))
-                            (has-below (< y max-y))
-                            (has-left  (or (= y r) (memq y left-rows)))
-                            (has-right (or (= y r) (memq y right-rows))))
-                       (let ((sym
-                              (cond
-                               ((and has-above has-below has-left has-right) "┼")
-                               ((and has-above has-below has-left (not has-right)) "┤")
-                               ((and has-above has-below (not has-left) has-right) "├")
-                               ((and has-above has-below (not has-left) (not has-right)) "│")
-                               ((and has-above (not has-below) has-left has-right) "┴")
-                               ((and has-above (not has-below) has-left (not has-right)) "╯")
-                               ((and has-above (not has-below) (not has-left) has-right) "╰")
-                               ((and (not has-above) has-below has-left has-right) "┬")
-                               ((and (not has-above) has-below has-left (not has-right)) "╮")
-                               ((and (not has-above) has-below (not has-left) has-right) "╭")
-                               ((and (not has-above) (not has-below) has-left has-right) "┬")
-                               (t "│"))))
-                         (delete-region (point) (min (1+ (point)) (line-end-position)))
-                         (insert (org-mindmap--propertize-connector sym))
-                         ;; Draw left horizontal dash if needed
-                         (when (memq y left-rows)
-                           (org-mindmap--move-to y (1- conn-c))
-                           (delete-region (point) (min (1+ (point)) (line-end-position)))
-                           (insert (org-mindmap--propertize-connector "─")))
-                         ;; Draw right horizontal dash if needed
-                         (when (memq y right-rows)
-                           (org-mindmap--move-to y (1+ conn-c))
-                           (delete-region (point) (min (+ (point) 2) (line-end-position)))
-                           (insert (org-mindmap--propertize-connector "─ "))))))
-            (dolist (child children)
-              (org-mindmap--draw-node child))))
-      
-      (progn
-        ;; Normal node with separate left and right vertical connectors
-        ;; Draw left children
-        (when left-children
-          (let* ((conn-c (- c 2))
-                 (child-rows (mapcar #'org-mindmap-parser-node-row left-children))
-                 (min-y (min (apply #'min child-rows) r))
-                 (max-y (max (apply #'max child-rows) r)))
-            (cl-loop for y from min-y to max-y do
-                     (org-mindmap--move-to y conn-c)
-                     (let* ((has-above (> y min-y))
-                            (has-below (< y max-y))
-                            (has-left  (memq y child-rows))
-                            (has-right (= y r)))
-                       (let ((sym
-                              (cond
-                               ((and has-above has-below has-left has-right) "┼")
-                               ((and has-above has-below has-left (not has-right)) "┤")
-                               ((and has-above has-below (not has-left) has-right) "├")
-                               ((and has-above has-below (not has-left) (not has-right)) "│")
-                               ((and has-above (not has-below) has-left has-right) "┴")
-                               ((and has-above (not has-below) has-left (not has-right)) "╯")
-                               ((and has-above (not has-below) (not has-left) has-right) "╰")
-                               ((and (not has-above) has-below has-left has-right) "┬")
-                               ((and (not has-above) has-below has-left (not has-right)) "╮")
-                               ((and (not has-above) has-below (not has-left) has-right) "╭")
-                               ((and (not has-above) (not has-below) has-left has-right) "─")
-                               (t "│"))))
-                         (if has-left
-                             (progn
-                               (org-mindmap--move-to y (1- conn-c))
-                               (let ((conn-str (concat "─" sym)))
-                                 (delete-region (point) (min (+ (point) 2) (line-end-position)))
-                                 (insert (org-mindmap--propertize-connector conn-str))))
-                           (progn
-                             (delete-region (point) (min (1+ (point)) (line-end-position)))
-                             (insert (org-mindmap--propertize-connector sym)))))))
-            (dolist (child left-children)
-              (org-mindmap--draw-node child))))
 
-        ;; Draw right children
-        (when right-children
-          (let* ((conn-c (+ c text-len 1))
-                 (child-rows (mapcar #'org-mindmap-parser-node-row right-children))
-                 (min-y (min (apply #'min child-rows) r))
-                 (max-y (max (apply #'max child-rows) r)))
-            (cl-loop for y from min-y to max-y do
-                     (org-mindmap--move-to y conn-c)
-                     (let* ((has-above (> y min-y))
-                            (has-below (< y max-y))
-                            (has-left  (= y r))
-                            (has-right (memq y child-rows)))
-                       (let ((sym
-                              (cond
-                               ((and has-above has-below has-left has-right) "┼")
-                               ((and has-above has-below has-left (not has-right)) "┤")
-                               ((and has-above has-below (not has-left) has-right) "├")
-                               ((and has-above has-below (not has-left) (not has-right)) "│")
-                               ((and has-above (not has-below) has-left has-right) "┴")
-                               ((and has-above (not has-below) has-left (not has-right)) "╯")
-                               ((and has-above (not has-below) (not has-left) has-right) "╰")
-                               ((and (not has-above) has-below has-left has-right) "┬")
-                               ((and (not has-above) has-below has-left (not has-right)) "╮")
-                               ((and (not has-above) has-below (not has-left) has-right) "╭")
-                               ((and (not has-above) (not has-below) has-left has-right) "─")
-                               (t "│"))))
-                         (if has-right
-                             (let ((conn-str (concat sym "─ ")))
-                               (delete-region (point) (min (+ (point) 3) (line-end-position)))
-                               (insert (org-mindmap--propertize-connector conn-str)))
-                           (progn
-                             (delete-region (point) (min (1+ (point)) (line-end-position)))
-                             (insert (org-mindmap--propertize-connector sym)))))))
-            (dolist (child right-children)
-              (org-mindmap--draw-node child))))))))
+    (if (null (org-mindmap-parser-node-parent node))
+        (let* ((raw-text (org-mindmap-parser-node-text node))
+               (l-delim (car org-mindmap-parser-root-delimiters))
+               (r-delim (cdr org-mindmap-parser-root-delimiters)))
+          (insert (org-mindmap--propertize-connector l-delim))
+          (unless (string= raw-text "")
+            (insert (org-mindmap--propertize-text " "))
+            (insert (org-mindmap--propertize-text raw-text))
+            (insert (org-mindmap--propertize-text " ")))
+          (insert (org-mindmap--propertize-connector r-delim)))
+      (insert (org-mindmap--propertize-text text)))
+    
+    ;; Draw left children
+    (when left-children
+      (let* ((conn-c (- c 2))
+             (child-rows (mapcar #'org-mindmap-parser-node-row left-children))
+             (min-y (min (apply #'min child-rows) r))
+             (max-y (max (apply #'max child-rows) r)))
+        (cl-loop for y from min-y to max-y do
+                 (org-mindmap--move-to y conn-c)
+                 (let* ((has-above (> y min-y))
+                        (has-below (< y max-y))
+                        (has-left  (memq y child-rows))
+                        (has-right (= y r)))
+                   (let ((sym
+                          (cond
+                           ((and has-above has-below has-left has-right) "┼")
+                           ((and has-above has-below has-left (not has-right)) "┤")
+                           ((and has-above has-below (not has-left) has-right) "├")
+                           ((and has-above has-below (not has-left) (not has-right)) "│")
+                           ((and has-above (not has-below) has-left has-right) "┴")
+                           ((and has-above (not has-below) has-left (not has-right)) "╯")
+                           ((and has-above (not has-below) (not has-left) has-right) "╰")
+                           ((and (not has-above) has-below has-left has-right) "┬")
+                           ((and (not has-above) has-below has-left (not has-right)) "╮")
+                           ((and (not has-above) has-below (not has-left) has-right) "╭")
+                           ((and (not has-above) (not has-below) has-left has-right) "─")
+                           (t "│"))))
+                     (if has-left
+                         (progn
+                           (org-mindmap--move-to y (1- conn-c))
+                           (let ((conn-str (concat "─" sym)))
+                             (delete-region (point) (min (+ (point) 2) (line-end-position)))
+                             (insert (org-mindmap--propertize-connector conn-str))))
+                       (progn
+                         (delete-region (point) (min (1+ (point)) (line-end-position)))
+                         (insert (org-mindmap--propertize-connector sym)))))))
+        (dolist (child left-children)
+          (org-mindmap--draw-node child))))
+
+    ;; Draw right children
+    (when right-children
+      (let* ((conn-c (+ c text-len 1))
+             (child-rows (mapcar #'org-mindmap-parser-node-row right-children))
+             (min-y (min (apply #'min child-rows) r))
+             (max-y (max (apply #'max child-rows) r)))
+        (cl-loop for y from min-y to max-y do
+                 (org-mindmap--move-to y conn-c)
+                 (let* ((has-above (> y min-y))
+                        (has-below (< y max-y))
+                        (has-left  (= y r))
+                        (has-right (memq y child-rows)))
+                   (let ((sym
+                          (cond
+                           ((and has-above has-below has-left has-right) "┼")
+                           ((and has-above has-below has-left (not has-right)) "┤")
+                           ((and has-above has-below (not has-left) has-right) "├")
+                           ((and has-above has-below (not has-left) (not has-right)) "│")
+                           ((and has-above (not has-below) has-left has-right) "┴")
+                           ((and has-above (not has-below) has-left (not has-right)) "╯")
+                           ((and has-above (not has-below) (not has-left) has-right) "╰")
+                           ((and (not has-above) has-below has-left has-right) "┬")
+                           ((and (not has-above) has-below has-left (not has-right)) "╮")
+                           ((and (not has-above) has-below (not has-left) has-right) "╭")
+                           ((and (not has-above) (not has-below) has-left has-right) "─")
+                           (t "│"))))
+                     (if has-right
+                         (let ((conn-str (concat sym "─ ")))
+                           (delete-region (point) (min (+ (point) 3) (line-end-position)))
+                           (insert (org-mindmap--propertize-connector conn-str)))
+                       (progn
+                         (delete-region (point) (min (1+ (point)) (line-end-position)))
+                         (insert (org-mindmap--propertize-connector sym)))))))
+        (dolist (child right-children)
+          (org-mindmap--draw-node child))))))
 
 (defun org-mindmap-render-tree (roots &optional layout spacing)
   "Render ROOTS evaluating the specified LAYOUT geometry and SPACING."
@@ -629,7 +596,10 @@ If TEXT is nil or empty, creates an empty node for immediate editing."
   (cl-destructuring-bind (start end roots target-node) (org-mindmap--get-state)
     (unless target-node (error "No node at point"))
     (let* ((parent (org-mindmap-parser-node-parent target-node))
-           (new-node (org-mindmap-parser-make-node :id (cl-gensym "node") :text text :parent parent)))
+           (new-node (org-mindmap-parser-make-node :id (cl-gensym "node") 
+                                                   :text text 
+                                                   :parent parent
+                                                   :side (if target-node (org-mindmap-parser-node-side target-node) 'right))))
       (if parent
           (let ((siblings (org-mindmap-parser-node-children parent)))
             (setf (org-mindmap-parser-node-children parent)
@@ -792,58 +762,125 @@ If TEXT is nil or empty, creates an empty node for immediate editing."
 (declare-function org-list-to-lisp "org-list")
 (declare-function org-at-item-p "org-list")
 
-(defun org-mindmap--lisp-to-nodes (lisp-list)
-  "Convert an org-list `LISP-LIST' into a list of `org-mindmap-parser-node's."
+(defun org-mindmap--lisp-to-nodes (lisp-list &optional parent side-override)
+  "Convert an org-list `LISP-LIST' into a list of `org-mindmap-parser-node's.
+If `SIDE-OVERRIDE' is set, all nodes and their descendants get that side."
   (let ((items (cdr lisp-list))
-        (nodes nil))
+        (nodes nil)
+        (current-side (or side-override 'right))
+        (pivot-found nil))
     (dolist (item items)
       (let ((texts nil)
-            (sublists nil))
+            (sublists nil)
+            (is-empty t))
         (dolist (elem item)
           (if (stringp elem)
-              (push elem texts)
-            (push elem sublists)))
-        ;; Merge all text portions and collapse spaces/newlines for single-line node labels
-        (let* ((full-text (replace-regexp-in-string
-                           "[ \t\n\r]+" " "
-                           (string-trim (mapconcat #'identity (nreverse texts) " "))))
-               (node (org-mindmap-parser-make-node :id (cl-gensym "node") :text full-text)))
-          (when sublists
-            (let ((children (mapcan #'org-mindmap--lisp-to-nodes (nreverse sublists))))
-              (dolist (child children)
-                (setf (org-mindmap-parser-node-parent child) node))
-              (setf (org-mindmap-parser-node-children node) children)))
-          (push node nodes))))
+              (let ((trimmed (string-trim elem)))
+                (push elem texts)
+                (when (not (string= trimmed ""))
+                  (setq is-empty nil)))
+            (push elem sublists)
+            (setq is-empty nil)))
+        
+        (if (and is-empty (not side-override) (not pivot-found))
+            (setq current-side 'left
+                  pivot-found t)
+          (unless is-empty
+            (let* ((full-text (replace-regexp-in-string
+                               "[ \t\n\r]+" " "
+                               (string-trim (mapconcat #'identity (nreverse texts) " "))))
+                   (node (org-mindmap-parser-make-node :id (cl-gensym "node") 
+                                                       :text full-text
+                                                       :parent parent
+                                                       :side current-side)))
+              (when sublists
+                (let ((children (mapcan (lambda (sl) (org-mindmap--lisp-to-nodes sl node current-side))
+                                        (nreverse sublists))))
+                  (setf (org-mindmap-parser-node-children node) children)))
+              (push node nodes))))))
     (nreverse nodes)))
+
+(defun org-mindmap--get-list-context ()
+  "Return (root-text begin-pos end-pos list-elem) if at a list or root-paragraph."
+  (save-excursion
+    (let* ((element (org-element-at-point))
+           (type (org-element-type element))
+           list-elem paragraph-elem)
+      ;; Normalize to the top-level list element if we are inside it
+      (while (and element (not (memq (org-element-type element) '(plain-list paragraph))))
+        (setq element (org-element-property :parent element)))
+      
+      (setq type (org-element-type element))
+      
+      (cond
+       ((eq type 'plain-list)
+        (setq list-elem element)
+        (goto-char (org-element-property :begin list-elem))
+        ;; Check for paragraph right before the list
+        (let ((pos (point)))
+          (forward-line -1)
+          (while (and (not (bobp)) (looking-at-p "^[ \t]*$"))
+            (forward-line -1))
+          (let ((prev (org-element-at-point)))
+            (when (eq (org-element-type prev) 'paragraph)
+              (setq paragraph-elem prev)))))
+       ((eq type 'paragraph)
+        (setq paragraph-elem element)
+        (goto-char (org-element-property :end paragraph-elem))
+        ;; Skip trailing whitespace/newlines to find the list
+        (while (and (not (eobp)) (looking-at-p "^[ \t]*$"))
+          (forward-line 1))
+        (let ((nxt (org-element-at-point)))
+          (while (and nxt (eq (org-element-type nxt) 'item))
+            (setq nxt (org-element-property :parent nxt)))
+          (if (eq (org-element-type nxt) 'plain-list)
+              (setq list-elem nxt)
+            (setq paragraph-elem nil)))))
+      
+      (when list-elem
+        (list (when paragraph-elem
+                (string-trim (buffer-substring-no-properties
+                              (org-element-property :contents-begin paragraph-elem)
+                              (org-element-property :contents-end paragraph-elem))))
+              (org-element-property :begin (or paragraph-elem list-elem))
+              (org-element-property :end list-elem)
+              list-elem)))))
+
 
 (defun org-mindmap-list-to-mindmap ()
   "Convert the `org-mode' plain list at point into an `org-mindmap' block."
   (interactive)
-  (unless (org-at-item-p)
-    (user-error "Not at an `org-mode' list item"))
-  (let* ((struct (org-list-struct))
-         (top (org-list-get-top-point struct))
-         ;; Extract list lisp structure while commanding org to delete the old list
-         (lisp-list (save-excursion
-                      (goto-char top)
-                      (org-list-to-lisp t)))
-         (nodes (org-mindmap--lisp-to-nodes lisp-list))
-         (rendered (org-mindmap-render-tree nodes)))
-    (save-excursion
-      (goto-char top)
-      (insert "#+begin_mindmap\n" rendered "\n#+end_mindmap\n"))))
+  (let ((context (org-mindmap--get-list-context)))
+    (unless context
+      (user-error "Not at a list or a list's root paragraph"))
+    (cl-destructuring-bind (root-text begin end list-elem) context
+      (let* ((lisp-list (save-excursion
+                          (goto-char (org-element-property :begin list-elem))
+                          (org-list-to-lisp)))
+             (root-node (org-mindmap-parser-make-node :id (cl-gensym "node") :text (or root-text "")))
+             (children (org-mindmap--lisp-to-nodes lisp-list root-node))
+             (inhibit-read-only t))
+        (setf (org-mindmap-parser-node-children root-node) children)
+        (delete-region begin end)
+        (let ((rendered (org-mindmap-render-tree (list root-node))))
+          (save-excursion
+            (goto-char begin)
+            (insert "#+begin_mindmap\n" rendered "\n#+end_mindmap\n")))))))
 
-(defun org-mindmap--nodes-to-list-string (nodes indent)
+(defun org-mindmap--nodes-to-list-string (nodes indent &optional side-filter)
   "Convert a list of `org-mindmap-parser-node's NODES into a plain list string.
-Uses INDENT for the level."
+Uses INDENT for the level. If `SIDE-FILTER' is set, only include nodes of that side."
   (let ((res nil)
         (prefix (make-string indent ?\ )))
-    (dolist (node nodes)
+    (dolist (node (if side-filter
+                      (cl-remove-if-not (lambda (n) (eq (org-mindmap-parser-node-side n) side-filter)) nodes)
+                    nodes))
       (push (concat prefix "- " (org-mindmap-parser-node-text node)) res)
       (when (org-mindmap-parser-node-children node)
-        (push (org-mindmap--nodes-to-list-string
-               (org-mindmap-parser-node-children node) (+ indent 2))
-              res)))
+        (let ((child-str (org-mindmap--nodes-to-list-string
+                          (org-mindmap-parser-node-children node) (+ indent 2))))
+          (when (not (string= child-str ""))
+            (push child-str res)))))
     (mapconcat #'identity (nreverse res) "\n")))
 
 (defun org-mindmap-to-list ()
@@ -854,17 +891,30 @@ Uses INDENT for the level."
       (user-error "Not inside an `org-mindmap' region"))
     (let* ((start (car region))
            (end (cdr region))
-           (roots (org-mindmap-parser-parse-region start end))
-           (list-string (org-mindmap--nodes-to-list-string roots 0)))
-      (save-excursion
-        (goto-char start)
-        ;; Suspend read-only constraints just long enough to destroy the old block
-        (let ((inhibit-read-only t))
-          (delete-region start (save-excursion
-                                 (goto-char end)
-                                 (forward-line 1)
-                                 (point)))
-          (insert list-string "\n"))))))
+           (roots (org-mindmap-parser-parse-region start end)))
+      (when (and roots (= (length roots) 1))
+        (let* ((root (car roots))
+               (root-text (org-mindmap-parser-node-text root))
+               (children (org-mindmap-parser-node-children root))
+               (right-children-str (org-mindmap--nodes-to-list-string children 0 'right))
+               (left-children-str (org-mindmap--nodes-to-list-string children 0 'left))
+               (result-list nil))
+          (when (not (string= right-children-str ""))
+            (push right-children-str result-list))
+          (when (not (string= left-children-str ""))
+            (push "-" result-list)
+            (push left-children-str result-list))
+          
+          (save-excursion
+            (goto-char start)
+            (let ((inhibit-read-only t))
+              (delete-region start (save-excursion
+                                     (goto-char end)
+                                     (forward-line 1)
+                                     (point)))
+              (when (and root-text (not (string= root-text "")))
+                (insert root-text "\n"))
+              (insert (mapconcat #'identity (nreverse result-list) "\n") "\n"))))))))
 
 (defun org-mindmap-edit-node ()
   "Edit the text of the node at point and refresh the mindmap."
