@@ -1,36 +1,6 @@
 (require 'ert)
 (require 'org-mindmap)
 
-(defmacro with-org-mindmap-test (initial-content node-text action &rest body)
-  "Set up a mindmap with INITIAL-CONTENT, move to NODE-TEXT, perform ACTION, then run BODY."
-  (declare (indent 3))
-  `(with-temp-buffer
-     (org-mode)
-     (setq indent-tabs-mode nil)
-     (insert "#+begin_mindmap\n" ,initial-content "\n#+end_mindmap")
-     (goto-char (point-min))
-     (if ,node-text
-         (progn
-           (re-search-forward (regexp-quote ,node-text))
-           (goto-char (match-beginning 0)))
-       (re-search-forward "^#\\+begin_mindmap")
-       (forward-line 1))
-     (funcall ,action)
-     ,@body))
-
-(defun org-mindmap-test-get-content ()
-  "Return the mindmap block content from the current buffer."
-  (save-excursion
-    (goto-char (point-min))
-    (let ((start (re-search-forward "^#\\+begin_mindmap" nil t))
-          (end (re-search-forward "^#\\+end_mindmap" nil t)))
-      (when (and start end)
-        (goto-char start)
-        (forward-line 1)
-        (let ((content-start (point)))
-          (goto-char end)
-          (forward-line -1)
-          (buffer-substring-no-properties content-start (line-end-position)))))))
 
 (ert-deftest org-mindmap-test-list-conversion-root-text ()
   "Test conversion between list and mindmap with root text."
@@ -98,3 +68,42 @@
     (org-mindmap-to-list)
     (goto-char (point-min))
     (should (looking-at "- Right1\n-\n- Left1"))))
+
+(ert-deftest org-mindmap-test-conversion-cursor-independence ()
+  "Test that list conversion does not depend on cursor position within items."
+  (let ((content "Root\n- Hello\n- World\n-\n- Left1\n  - left2"))
+    (dolist (search-term '("Hello" "World" "Left1" "left2"))
+      (with-temp-buffer
+        (org-mode)
+        (setq indent-tabs-mode nil)
+        (insert content)
+        (goto-char (point-min))
+        (re-search-forward search-term)
+        (goto-char (match-beginning 0))
+        ;; Call conversion
+        (org-mindmap-list-to-mindmap)
+        ;; Verify Root was preserved correctly
+        (goto-char (point-min))
+        (should (re-search-forward "◀ Root ▶" nil t))
+        (goto-char (point-min))
+        (should (re-search-forward "Hello" nil t))
+        (goto-char (point-min))
+        (should (re-search-forward "left2" nil t))
+        ;; Verify no duplicate Root text outside block
+        (goto-char (point-min))
+        (should-not (re-search-forward "^Root$" nil t))))))
+
+(ert-deftest org-mindmap-test-conversion-empty-root-pivot ()
+  "Test conversion of a list with an empty pivot and no root paragraph."
+  (with-temp-buffer
+    (org-mode)
+    (setq indent-tabs-mode nil)
+    (insert "- Right\n-\n- Left")
+    (goto-char (point-min))
+    (org-mindmap-list-to-mindmap)
+    (goto-char (point-min))
+    (should (re-search-forward "◀▶" nil t))
+    (goto-char (point-min))
+    (should (re-search-forward "Right" nil t))
+    (goto-char (point-min))
+    (should (re-search-forward "Left" nil t))))

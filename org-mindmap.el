@@ -794,38 +794,47 @@ If `SIDE-OVERRIDE' is set, all nodes and their descendants get that side."
   "Return (root-text begin-pos end-pos list-elem) if at a list or root-paragraph."
   (save-excursion
     (let* ((element (org-element-at-point))
-           (type (org-element-type element))
-           list-elem paragraph-elem)
-      ;; Normalize to the top-level list element if we are inside it
-      (while (and element (not (memq (org-element-type element) '(plain-list paragraph))))
-        (setq element (org-element-property :parent element)))
+           list-elem paragraph-elem
+           tmp-list)
+      ;; 1. Identify the top-most plain-list in the ancestry
+      (let ((tmp element))
+        (while tmp
+          (when (eq (org-element-type tmp) 'plain-list)
+            (setq tmp-list tmp))
+          (setq tmp (org-element-property :parent tmp))))
       
-      (setq type (org-element-type element))
-      
-      (cond
-       ((eq type 'plain-list)
-        (setq list-elem element)
-        (goto-char (org-element-property :begin list-elem))
-        ;; Check for paragraph right before the list
-        (let ((pos (point)))
-          (forward-line -1)
-          (while (and (not (bobp)) (looking-at-p "^[ \t]*$"))
-            (forward-line -1))
-          (let ((prev (org-element-at-point)))
-            (when (eq (org-element-type prev) 'paragraph)
-              (setq paragraph-elem prev)))))
-       ((eq type 'paragraph)
-        (setq paragraph-elem element)
-        (goto-char (org-element-property :end paragraph-elem))
-        ;; Skip trailing whitespace/newlines to find the list
-        (while (and (not (eobp)) (looking-at-p "^[ \t]*$"))
-          (forward-line 1))
-        (let ((nxt (org-element-at-point)))
-          (while (and nxt (eq (org-element-type nxt) 'item))
-            (setq nxt (org-element-property :parent nxt)))
-          (if (eq (org-element-type nxt) 'plain-list)
-              (setq list-elem nxt)
-            (setq paragraph-elem nil)))))
+      (if tmp-list
+          (progn
+            (setq list-elem tmp-list)
+            ;; Look for a root paragraph immediately above the list
+            (goto-char (org-element-property :begin list-elem))
+            (let ((list-begin (point)))
+              (forward-line -1)
+              (while (and (not (bobp)) (looking-at-p "^[ \t]*$"))
+                (forward-line -1))
+              (let ((prev (org-element-at-point)))
+                (when (and (eq (org-element-type prev) 'paragraph)
+                           ;; Ensure it's not a list item itself
+                           (not (eq (org-element-type (org-element-property :parent prev)) 'item))
+                           ;; Ensure it actually ends right before the list (possibly with whitespace)
+                           (save-excursion
+                             (goto-char (org-element-property :end prev))
+                             (while (and (< (point) list-begin) (looking-at-p "^[ \t]*$"))
+                               (forward-line 1))
+                             (>= (point) list-begin)))
+                  (setq paragraph-elem prev)))))
+        
+        ;; 2. If not inside a list, check if we are on a paragraph followed by a list
+        (when (and (eq (org-element-type element) 'paragraph)
+                   (not (eq (org-element-type (org-element-property :parent element)) 'item)))
+          (setq paragraph-elem element)
+          (goto-char (org-element-property :end paragraph-elem))
+          (while (and (not (eobp)) (looking-at-p "^[ \t]*$"))
+            (forward-line 1))
+          (let ((nxt (org-element-at-point)))
+            (if (eq (org-element-type nxt) 'plain-list)
+                (setq list-elem nxt)
+              (setq paragraph-elem nil)))))
       
       (when list-elem
         (list (when paragraph-elem
