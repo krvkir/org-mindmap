@@ -274,7 +274,6 @@ SIDE is assigned to the created node."
   (let ((height (length lines))
         (implicit-conn-root nil)
         (implicit-text-root nil))
-    ;; TODO iterate columns to skip empty initial columns
     (org-mindmap-parser--debug "Starting implicit root search")
     (cl-loop for row from 0 to (1- height)
              until (or implicit-conn-root implicit-text-root)
@@ -289,8 +288,7 @@ SIDE is assigned to the created node."
       (let* ((r (car implicit-text-root))
              (c (cadr implicit-text-root))
              (node-res (org-mindmap-parser--consume-node lines r c org-mindmap-parser-dir-right nil visited nil))
-             (node (car node-res))
-             (nxt (cdr node-res)))
+             (node (car node-res)))
         node))
      (implicit-conn-root
       (let ((r (car implicit-conn-root))

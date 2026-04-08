@@ -180,3 +180,45 @@
     (org-mindmap-to-list)
     (goto-char (point-min))
     (should (re-search-forward "- R1\n  - R1C1\n    - R1C1C1\n  - R1C2\n- R2"))))
+
+(ert-deftest org-mindmap-test-bidirectional-list-conversion ()
+  "Test conversion between bidirectional list and mindmap."
+  (with-temp-buffer
+    (org-mode)
+    (setq indent-tabs-mode nil)
+    (insert "Iran\n- Geography\n  - constant\n  - size\n    - 3 x France\n    - 6 x UK\n  - south\n    - Persian Gulf\n  - east\n    - mountains of\n      - Khurasan\n      - Sistan\n      - Baluchestan\n  - west\n- Identity\n-\n- One\n- Two\n- Three\n")
+    (goto-char (point-min))
+    (org-mindmap-list-to-mindmap)
+    (goto-char (point-min))
+    (should (re-search-forward "#\\+begin_mindmap" nil t))
+    (should (re-search-forward "◀ Iran ▶" nil t))
+    (should (re-search-forward "Khurasan" nil t))
+    (should (re-search-forward "One" nil t))
+    ;; Convert back
+    (org-mindmap-to-list)
+    (goto-char (point-min))
+    (should-not (re-search-forward "#\\+begin_mindmap" nil t))
+    (should (re-search-forward "^Iran\n- Geography" nil t))
+    (should (re-search-forward "-\n- One" nil t))))
+
+(ert-deftest org-mindmap-test-empty-root-bidirectional-list-conversion ()
+  "Test conversion between bidirectional list with empty root and mindmap."
+  (with-temp-buffer
+    (org-mode)
+    (setq indent-tabs-mode nil)
+    (insert "- Right1\n- Right2\n-\n- Left1\n- Left2\n")
+    (goto-char (point-min))
+    (org-mindmap-list-to-mindmap)
+    (goto-char (point-min))
+    (should (re-search-forward "#\\+begin_mindmap" nil t))
+    (should (re-search-forward "◀▶" nil t))
+    (should (re-search-forward "Right1" nil t))
+    (should (re-search-forward "Left1" nil t))
+    ;; Convert back
+    (org-mindmap-to-list)
+    (goto-char (point-min))
+    (should-not (re-search-forward "#\\+begin_mindmap" nil t))
+    (should (re-search-forward "^- Right1" nil t))
+    (should (re-search-forward "-\n- Left1" nil t))))
+
+
