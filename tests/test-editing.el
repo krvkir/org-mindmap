@@ -159,3 +159,26 @@
                                   (leaf (car (org-mindmap-parser-node-children sub-child))))
                              (should (eq (org-mindmap-parser-node-side sub-child) 'right))
                              (should (eq (org-mindmap-parser-node-side leaf) 'right))))))
+
+(ert-deftest org-mindmap-test-return-on-header ()
+  "Test that RET on header inserts a newline."
+  (let ((initial "⏴ Root ⏵"))
+    (with-org-mindmap-test initial "#+begin_mindmap" #'org-mindmap--return
+                           (should (string-prefix-p "\n#+begin_mindmap" (buffer-substring-no-properties (point-min) (point-max)))))))
+
+(ert-deftest org-mindmap-test-return-on-node ()
+  "Test that RET on a child node inserts a sibling."
+  (let ((initial "⏴ Root ⏵ ── Child"))
+    (with-org-mindmap-test initial "Child" #'org-mindmap--return
+                           (let ((content (buffer-substring-no-properties (point-min) (point-max))))
+                             (should (string-match-p "Child" content))
+                             (should (string-match-p "┬─ Child\n" content))
+                             (should (string-match-p "╰─" content))))))
+
+(ert-deftest org-mindmap-test-return-on-root ()
+  "Test that RET on root node inserts a child."
+  (let ((initial "⏴ Root ⏵"))
+    (with-org-mindmap-test initial "Root" #'org-mindmap--return
+                           (let ((content (buffer-substring-no-properties (point-min) (point-max))))
+                             (should (string-match-p "Root" content))
+                             (should (string-match-p "──" content))))))

@@ -589,25 +589,28 @@ With prefix argument at root node, creates a child on the left side."
 
 (defun org-mindmap-insert-sibling (&optional text)
   "Create new sibling node with optional TEXT after node at cursor position.
-If TEXT is nil or empty, creates an empty node for immediate editing."
+If TEXT is nil or empty, creates an empty node for immediate editing.
+If target-node is the root node, it calls `org-mindmap-insert-child`."
   (interactive (list (read-string "Sibling text: ")))
   (setq text (or text ""))
   (cl-destructuring-bind (start end roots target-node) (org-mindmap--get-state)
     (unless target-node (error "No node at point"))
-    (let* ((parent (org-mindmap-parser-node-parent target-node))
-           (new-node (org-mindmap-parser-make-node :id (cl-gensym "node")
-                                                   :text text
-                                                   :parent parent
-                                                   :side (if target-node (org-mindmap-parser-node-side target-node) 'right))))
-      (if parent
-          (let ((siblings (org-mindmap-parser-node-children parent)))
-            (setf (org-mindmap-parser-node-children parent)
-                  (org-mindmap--insert-after siblings target-node new-node)))
-        (setq roots (org-mindmap--insert-after roots target-node new-node)))
-      (let* ((props (org-mindmap--parse-properties start))
-             (layout (intern (or (plist-get props :layout) (symbol-name org-mindmap-default-layout))))
-             (spacing (string-to-number (or (plist-get props :spacing) (number-to-string org-mindmap-spacing)))))
-        (org-mindmap--update-buffer start end roots (org-mindmap-parser-node-id new-node) layout spacing)))))
+    (if (not (equal (car roots) target-node))
+        (let* ((parent (org-mindmap-parser-node-parent target-node))
+               (new-node (org-mindmap-parser-make-node :id (cl-gensym "node")
+                                                       :text text
+                                                       :parent parent
+                                                       :side (if target-node (org-mindmap-parser-node-side target-node) 'right))))
+          (if parent
+              (let ((siblings (org-mindmap-parser-node-children parent)))
+                (setf (org-mindmap-parser-node-children parent)
+                      (org-mindmap--insert-after siblings target-node new-node)))
+            (setq roots (org-mindmap--insert-after roots target-node new-node)))
+          (let* ((props (org-mindmap--parse-properties start))
+                 (layout (intern (or (plist-get props :layout) (symbol-name org-mindmap-default-layout))))
+                 (spacing (string-to-number (or (plist-get props :spacing) (number-to-string org-mindmap-spacing)))))
+            (org-mindmap--update-buffer start end roots (org-mindmap-parser-node-id new-node) layout spacing)))
+      (org-mindmap-insert-child text))))
 
 (defun org-mindmap-insert-root (&optional text)
   "Create new root node with optional TEXT at end of existing roots.
@@ -983,18 +986,6 @@ nodes of that side."
 ;; Minor Mode and Keybindings
 ;;
 
-(defvar org-mindmap-mode-map
-  (let ((map (make-sparse-keymap)))
-    (define-key map (kbd "C-c C-n") #'org-mindmap-insert-child)
-    (define-key map (kbd "C-c C-s") #'org-mindmap-insert-sibling)
-    (define-key map (kbd "C-c C-r") #'org-mindmap-insert-root)
-    (define-key map (kbd "C-c C-d") #'org-mindmap-delete-node)
-    (define-key map (kbd "C-c C-v") #'org-mindmap-switch-layout)
-    (define-key map (kbd "RET") (lambda () (interactive) (org-mindmap-insert-sibling "")))
-    (define-key map (kbd "<return>") (lambda () (interactive) (org-mindmap-insert-sibling "")))
-    map)
-  "Keymap for `org-mindmap-mode'.")
-
 (defun org-mindmap--move-up ()
   "Hijack M-<up> if inside a mindmap region."
   (when (org-mindmap-parser-region-active-p)
@@ -1031,12 +1022,6 @@ nodes of that side."
     (org-mindmap-align)
     t))
 
-(defun org-mindmap--insert-sibling ()
-  "Hijack M-RET if inside a mindmap region."
-  (when (org-mindmap-parser-region-active-p)
-    (org-mindmap-insert-sibling)
-    t))
-
 (defun org-mindmap--insert-child ()
   "Hijack M-RET if inside a mindmap region."
   (when (org-mindmap-parser-region-active-p)
@@ -1061,6 +1046,27 @@ nodes of that side."
   (add-hook 'org-ctrl-c-ctrl-c-hook #'org-mindmap--align))
 
 (org-mindmap--register-hooks)
+
+(defun org-mindmap--return ()
+  "If on a node, insert a sibling, otherwise just insert a newline."
+  (interactive)
+  (when (org-mindmap-parser-region-active-p)
+    (let ((node (org-mindmap-find-node-at-point)))
+      (if node
+          (org-mindmap-insert-sibling)
+        (newline-and-indent)))))
+
+(defvar org-mindmap-mode-map
+  (let ((map (make-sparse-keymap)))
+    (define-key map (kbd "C-c C-n") #'org-mindmap-insert-child)
+    (define-key map (kbd "C-c C-s") #'org-mindmap-insert-sibling)
+    (define-key map (kbd "C-c C-r") #'org-mindmap-insert-root)
+    (define-key map (kbd "C-c C-d") #'org-mindmap-delete-node)
+    (define-key map (kbd "C-c C-v") #'org-mindmap-switch-layout)
+    (define-key map (kbd "RET") #'org-mindmap--return)
+    (define-key map (kbd "<return>") #'org-mindmap--return)
+    map)
+  "Keymap for `org-mindmap-mode'.")
 
 (define-minor-mode org-mindmap-mode
   "Minor mode for editable mindmaps in `org-mode'."
