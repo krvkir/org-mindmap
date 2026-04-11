@@ -585,7 +585,8 @@ With prefix argument at root node, creates a child on the left side."
       (let* ((props (org-mindmap--parse-properties start))
              (layout (intern (or (plist-get props :layout) (symbol-name org-mindmap-default-layout))))
              (spacing (string-to-number (or (plist-get props :spacing) (number-to-string org-mindmap-spacing)))))
-        (org-mindmap--update-buffer start end roots (org-mindmap-parser-node-id new-node) layout spacing)))))
+        (org-mindmap--update-buffer start end roots (org-mindmap-parser-node-id new-node) layout spacing))
+      new-node)))
 
 (defun org-mindmap-insert-sibling (&optional text)
   "Create new sibling node with optional TEXT after node at cursor position.
@@ -609,7 +610,8 @@ If target-node is the root node, it calls `org-mindmap-insert-child`."
           (let* ((props (org-mindmap--parse-properties start))
                  (layout (intern (or (plist-get props :layout) (symbol-name org-mindmap-default-layout))))
                  (spacing (string-to-number (or (plist-get props :spacing) (number-to-string org-mindmap-spacing)))))
-            (org-mindmap--update-buffer start end roots (org-mindmap-parser-node-id new-node) layout spacing)))
+            (org-mindmap--update-buffer start end roots (org-mindmap-parser-node-id new-node) layout spacing))
+          new-node)
       (org-mindmap-insert-child text))))
 
 (defun org-mindmap-insert-root (&optional text)
@@ -986,20 +988,17 @@ nodes of that side."
 ;; Minor Mode and Keybindings
 ;;
 
-(defun org-mindmap--move-up ()
-  "Hijack M-<up> if inside a mindmap region."
+(defun org-mindmap--metaup ()
   (when (org-mindmap-parser-region-active-p)
     (org-mindmap-move-up)
     t))
 
-(defun org-mindmap--move-down ()
-  "Hijack M-<down> if inside a mindmap region."
+(defun org-mindmap--metadown ()
   (when (org-mindmap-parser-region-active-p)
     (org-mindmap-move-down)
     t))
 
-(defun org-mindmap--promote ()
-  "Hijack M-<left> if inside a mindmap region."
+(defun org-mindmap--metaleft ()
   (when (org-mindmap-parser-region-active-p)
     (let ((node (org-mindmap-find-node-at-point)))
       (if (and node (eq (org-mindmap-parser-node-side node) 'left))
@@ -1007,8 +1006,7 @@ nodes of that side."
         (org-mindmap-promote)))
     t))
 
-(defun org-mindmap--demote ()
-  "Hijack M-<right> if inside a mindmap region."
+(defun org-mindmap--metaright ()
   (when (org-mindmap-parser-region-active-p)
     (let ((node (org-mindmap-find-node-at-point)))
       (if (and node (eq (org-mindmap-parser-node-side node) 'left))
@@ -1016,20 +1014,17 @@ nodes of that side."
         (org-mindmap-demote)))
     t))
 
-(defun org-mindmap--align ()
-  "Hijack TAB if inside a mindmap region and auto-align is enabled."
+(defun org-mindmap--ctrl-c-ctrl-c ()
   (when (and org-mindmap-auto-align (org-mindmap-parser-region-active-p))
     (org-mindmap-align)
     t))
 
-(defun org-mindmap--insert-child ()
-  "Hijack M-RET if inside a mindmap region."
-  (when (org-mindmap-parser-region-active-p)
-    (org-mindmap-insert-child)
-    t))
+(defun org-mindmap--tab ()
+  (let ((node (org-mindmap-find-node-at-point)))
+    (when node
+      (org-mindmap-insert-child))))
 
-(defun org-mindmap--edit-node ()
-  "Hijack M-RET if inside a mindmap region."
+(defun org-mindmap--metareturn ()
   (when (org-mindmap-parser-region-active-p)
     (org-mindmap-edit-node)
     t))
@@ -1037,13 +1032,13 @@ nodes of that side."
 ;; Register the hooks
 (defun org-mindmap--register-hooks ()
   "Register org-mindmap hooks into `org-mode'."
-  (add-hook 'org-metaup-hook #'org-mindmap--move-up)
-  (add-hook 'org-metadown-hook #'org-mindmap--move-down)
-  (add-hook 'org-metaleft-hook #'org-mindmap--promote)
-  (add-hook 'org-metaright-hook #'org-mindmap--demote)
-  (add-hook 'org-tab-first-hook #'org-mindmap--insert-child)
-  (add-hook 'org-metareturn-hook #'org-mindmap--edit-node)
-  (add-hook 'org-ctrl-c-ctrl-c-hook #'org-mindmap--align))
+  (add-hook 'org-metaup-hook #'org-mindmap--metaup)
+  (add-hook 'org-metadown-hook #'org-mindmap--metadown)
+  (add-hook 'org-metaleft-hook #'org-mindmap--metaleft)
+  (add-hook 'org-metaright-hook #'org-mindmap--metaright)
+  (add-hook 'org-tab-first-hook #'org-mindmap--tab)
+  (add-hook 'org-metareturn-hook #'org-mindmap--metareturn)
+  (add-hook 'org-ctrl-c-ctrl-c-hook #'org-mindmap--ctrl-c-ctrl-c))
 
 (org-mindmap--register-hooks)
 

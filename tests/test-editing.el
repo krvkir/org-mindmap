@@ -7,7 +7,9 @@
   `(with-temp-buffer
      (org-mode)
      (setq indent-tabs-mode nil)
-     (insert "#+begin_mindmap\n" ,initial-content "\n#+end_mindmap")
+     (if ,initial-content
+         (insert "#+begin_mindmap\n" ,initial-content "\n#+end_mindmap")
+       (insert "#+begin_mindmap\n#+end_mindmap"))
      (goto-char (point-min))
      (if ,node-text
          (progn
@@ -162,8 +164,8 @@
 
 (ert-deftest org-mindmap-test-return-on-header ()
   "Test that RET on header inserts a newline."
-  (let ((initial "⏴ Root ⏵"))
-    (with-org-mindmap-test initial "#+begin_mindmap" #'org-mindmap--return
+  (let ((initial nil))
+    (with-org-mindmap-test initial "#+begin_mindmap" #'org-return
                            (should (string-prefix-p "\n#+begin_mindmap" (buffer-substring-no-properties (point-min) (point-max)))))))
 
 (ert-deftest org-mindmap-test-return-on-node ()
