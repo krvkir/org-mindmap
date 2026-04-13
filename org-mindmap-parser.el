@@ -3,7 +3,7 @@
 ;; Copyright (C) 2026 krvkir
 
 ;; Author: krvkir <krvkir@gmail.com>
-;; Version: 0.2.0
+;; Version: 0.2.2
 ;; Keywords: org, tools, outlines
 ;; Package-Requires: ((emacs "26.1"))
 ;; URL: https://github.com/krvkir/org-mindmap
@@ -237,7 +237,7 @@ VISITED keeps track of visited locations."
   (save-excursion
     (let ((orig (point))
           start end)
-      (goto-char (line-end-position))
+      (end-of-line)
       (when (re-search-backward "^[ \t]*#\\+begin_mindmap\\b" nil t)
         (setq start (line-beginning-position))
         (when (re-search-forward "^[ \t]*#\\+end_mindmap\\b" nil t)
@@ -247,7 +247,7 @@ VISITED keeps track of visited locations."
 
 (defun org-mindmap-parser-region-active-p ()
   "Check if cursor is inside a mindmap region."
-  (not (null (org-mindmap-parser-get-region))))
+  (when (org-mindmap-parser-get-region) t))
 
 (defun org-mindmap-parser--find-explicit-root (lines)
   "Find an explicit root in LINES."

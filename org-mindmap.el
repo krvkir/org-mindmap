@@ -3,7 +3,7 @@
 ;; Copyright (C) 2026 krvkir
 
 ;; Author: krvkir <krvkir@gmail.com>
-;; Version: 0.2.0
+;; Version: 0.2.2
 ;; Keywords: org, tools, outlines
 ;; Package-Requires: ((emacs "26.1") (org "9.1"))
 ;; URL: https://github.com/krvkir/org-mindmap
@@ -48,11 +48,6 @@
 (defcustom org-mindmap-default-layout 'left
   "Default layout mode."
   :type '(choice (const left) (const compact) (const centered))
-  :group 'org-mindmap)
-
-(defcustom org-mindmap-auto-align nil
-  "Whether TAB triggers alignment."
-  :type 'boolean
   :group 'org-mindmap)
 
 (defcustom org-mindmap-protect-connectors nil
@@ -985,20 +980,23 @@ nodes of that side."
       (org-mindmap--update-buffer start end roots (org-mindmap-parser-node-id target-node) layout spacing))))
 
 ;;
-;; Minor Mode and Keybindings
+;; Keybindings and Templates
 ;;
 
 (defun org-mindmap--metaup ()
+  "Hijack Org's M-<up>: move node at point upwrads if possible."
   (when (org-mindmap-parser-region-active-p)
     (org-mindmap-move-up)
     t))
 
 (defun org-mindmap--metadown ()
+  "Hijack Org's M-<down>: move node at point downwards if possible."
   (when (org-mindmap-parser-region-active-p)
     (org-mindmap-move-down)
     t))
 
 (defun org-mindmap--metaleft ()
+  "Hijack Org's M-<left>: move node at point left if possible."
   (when (org-mindmap-parser-region-active-p)
     (let ((node (org-mindmap-find-node-at-point)))
       (if (and node (eq (org-mindmap-parser-node-side node) 'left))
@@ -1007,6 +1005,7 @@ nodes of that side."
     t))
 
 (defun org-mindmap--metaright ()
+  "Hijack Org's M-<right>: move node at point right if possible."
   (when (org-mindmap-parser-region-active-p)
     (let ((node (org-mindmap-find-node-at-point)))
       (if (and node (eq (org-mindmap-parser-node-side node) 'left))
@@ -1015,16 +1014,19 @@ nodes of that side."
     t))
 
 (defun org-mindmap--ctrl-c-ctrl-c ()
-  (when (and org-mindmap-auto-align (org-mindmap-parser-region-active-p))
+  "Hijack Org's `\\[org-ctrl-c-ctrl-c]': redraw the map and reallign the nodes."
+  (when (org-mindmap-parser-region-active-p)
     (org-mindmap-align)
     t))
 
 (defun org-mindmap--tab ()
+  "Hijack Org's TAB key: insert a child node."
   (let ((node (org-mindmap-find-node-at-point)))
     (when node
       (org-mindmap-insert-child))))
 
 (defun org-mindmap--metareturn ()
+  "Hijack Org's M-RET key: edit the node at point."
   (when (org-mindmap-parser-region-active-p)
     (org-mindmap-edit-node)
     t))
@@ -1042,42 +1044,17 @@ nodes of that side."
 
 (org-mindmap--register-hooks)
 
-(defun org-mindmap--return ()
-  "If on a node, insert a sibling, otherwise just insert a newline."
+(defun org-mindmap-return ()
+  "If on a mindmap node, insert a sibling, otherwise call `org-return'."
   (interactive)
-  (when (org-mindmap-parser-region-active-p)
-    (let ((node (org-mindmap-find-node-at-point)))
-      (if node
-          (org-mindmap-insert-sibling)
-        (newline-and-indent)))))
+  (if (org-mindmap-parser-region-active-p)
+      (let ((node (org-mindmap-find-node-at-point)))
+        (if node
+            (org-mindmap-insert-sibling)
+          (org-return)))
+    (org-return)))
 
-(defvar org-mindmap-mode-map
-  (let ((map (make-sparse-keymap)))
-    (define-key map (kbd "C-c C-n") #'org-mindmap-insert-child)
-    (define-key map (kbd "C-c C-s") #'org-mindmap-insert-sibling)
-    (define-key map (kbd "C-c C-r") #'org-mindmap-insert-root)
-    (define-key map (kbd "C-c C-d") #'org-mindmap-delete-node)
-    (define-key map (kbd "C-c C-v") #'org-mindmap-switch-layout)
-    (define-key map (kbd "RET") #'org-mindmap--return)
-    (define-key map (kbd "<return>") #'org-mindmap--return)
-    map)
-  "Keymap for `org-mindmap-mode'.")
-
-(define-minor-mode org-mindmap-mode
-  "Minor mode for editable mindmaps in `org-mode'."
-  :init-value nil
-  :lighter " Mindmap"
-  :keymap org-mindmap-mode-map)
-
-(defun org-mindmap-detect-on-command ()
-  "Auto-activate `org-mindmap-mode' when cursor enters a mindmap region."
-  (when (eq major-mode 'org-mode)
-    (let ((in-region (org-mindmap-parser-region-active-p)))
-      (when (not (eq (and org-mindmap-mode t) (and in-region t)))
-        (org-mindmap-mode (if in-region 1 -1))))))
-
-(add-hook 'post-command-hook #'org-mindmap-detect-on-command)
-
+(define-key org-mode-map (kbd "RET") #'org-mindmap-return)
 (add-to-list 'org-structure-template-alist '("m" . "mindmap"))
 
 (provide 'org-mindmap)

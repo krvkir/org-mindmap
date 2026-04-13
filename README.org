@@ -26,6 +26,23 @@ If you're using Emacs version prior to 29, clone this repo and use this:
   :after org)
 #+end_src
 
+** Configuration example
+The package is usable without extra mappings, but for convenience you might want to add main interactive commands into =C-c m= prefix space:
+#+begin_src elisp
+(use-package org-mindmap
+  :vc (:url "https://github.com/krvkir/org-mindmap.git" :rev :newest)
+  :after org
+  :bind
+  (:map org-mode-map
+        ("C-c m c" . org-mindmap-insert-child)
+        ("C-c m s" . org-mindmap-insert-sibling)
+        ("C-c m r" . org-mindmap-insert-root)
+        ("C-c m d" . org-mindmap-delete-node)
+        ("C-c m v" . org-mindmap-switch-layout)
+        ("C-c m m" . org-mindmap-list-to-mindmap)
+        ("C-c m l" . org-mindmap-to-list)))
+#+end_src
+
 * Usage
 ** From scratch
 Insert a mindmap block via =org-insert-structure-template= with =C-c C-, m=:
@@ -69,24 +86,26 @@ Fourth node ─╯               ╰─ Third node
 
 Here is the keys reference:
 
-| Command                     | Hotkey        | Description                                                  |
-|-----------------------------+---------------+--------------------------------------------------------------|
-| =org-mindmap-edit-node=       | =M-RET=         | edit node at point[fn:1]                                     |
-| =org-mindmap-insert-sibling=  | =RET= , =C-c C-s= | add a node near the current one (as its sibling)             |
-| =org-mindmap-insert-child=    | =TAB=, =C-c C-n=  | add a child node to the current one                          |
-| =org-mindmap-move-down=       | =M-<down>=      | move node one sibling down                                   |
-| =org-mindmap-move-up=         | =M-<up>=        | move node one sibling up                                     |
-| =org-mindmap-promote=         | =M-<left>=      | move node one level up, i.e. make it its parent's sibling    |
-| =org-mindmap-demote=          | =M-<right>=     | move node one level down, i.e. make it its sibling's child   |
-| =org-mindmap-delete-node=     | =C-c C-d=       | delete the current node and all its descendants              |
-| =org-mindmap-switch-layout=   | =C-c C-v=       | cycle between left, compact, and centered layouts            |
-| =org-mindmap-align=           | =C-c C-c=       | re-align the mindmap (if enabled via =org-mindmap-auto-align=) |
-| =org-mindmap-list-to-mindmap= |               | converts an Org list at point into a mind map                |
-| =org-mindmap-to-list=         |               | converts a mind map at point to an Org list                  |
+| Command                     | Hotkey                       | Description                                                |
+|-----------------------------+------------------------------+------------------------------------------------------------|
+| =org-mindmap-edit-node=       | =M-RET=                        | edit node at point[fn:1]                                   |
+| =org-mindmap-insert-sibling=  | =RET=                          | add a node near the current one (as its sibling)           |
+| =org-mindmap-insert-child=    | =TAB=                          | add a child node to the current one                        |
+| =org-mindmap-move-down=       | =M-<down>=                     | move node one sibling down                                 |
+| =org-mindmap-move-up=         | =M-<up>=                       | move node one sibling up                                   |
+| =org-mindmap-promote=         | =M-<left>= or =M-<right>= [fn:2] | move node one level up, i.e. make it its parent's sibling  |
+| =org-mindmap-demote=          | =M-<left>= or =M-<right>= [fn:2] | move node one level down, i.e. make it its sibling's child |
+| =org-mindmap-delete-node=     |                              | insert a new map                                           |
+| =org-mindmap-switch-layout=   |                              | cycle between left, compact, and centered layouts          |
+| =org-mindmap-align=           |                              | re-align the mindmap                                       |
+| =org-mindmap-list-to-mindmap= |                              | converts an Org list at point into a mind map              |
+| =org-mindmap-to-list=         |                              | converts a mind map at point to an Org list                |
 
 There are no specialized key maps for navigation: just use the usual text navigation keys.
 
 [fn:1] If you're editing a leaf node and there's no markup ahead of it, or you just need to fix a typo or insert a character or two, you may do that without =org-mindmap-edit-node=, but when the node length changes significantly and map structure lines shift, the map will likely fail to recover its structure after the edit.
+
+[fn:2] =M-<left>= calls =org-mindmap-promote= on the right side of the map and =org-mindmap-demote= on its left side, so nodes move leftwards every time. =M-<right>= works the same way.
 
 ** From a list
 Lists and mindmaps are mostly isomorphic: any list can be transformed to a corresponding mindmap without loss of data (except that bullet types and enumerated lists are not supported for now), and vice versa.
@@ -158,6 +177,11 @@ There are three layouts:
               ╰─ Users
 ,#+end_mindmap
 #+end_src
+
+* Fonts
+I've tested the package with =Hack= font, and things seem to work fine.
+
+Some fonts declare double size for symbols which are used as root node markers by default. You may either change your font or change default symbols for the root node (make sure those symbols are not ones used to draw map connectors and will not occur in your map nodes as text).
 
 * Examples
 Here's one more complex example mindmap for a chapter from Sönke Ahrens — How to Take Smart Notes.

@@ -171,7 +171,7 @@
 (ert-deftest org-mindmap-test-return-on-node ()
   "Test that RET on a child node inserts a sibling."
   (let ((initial "⏴ Root ⏵ ── Child"))
-    (with-org-mindmap-test initial "Child" #'org-mindmap--return
+    (with-org-mindmap-test initial "Child" #'org-mindmap-return
                            (let ((content (buffer-substring-no-properties (point-min) (point-max))))
                              (should (string-match-p "Child" content))
                              (should (string-match-p "┬─ Child\n" content))
@@ -180,7 +180,7 @@
 (ert-deftest org-mindmap-test-return-on-root ()
   "Test that RET on root node inserts a child."
   (let ((initial "⏴ Root ⏵"))
-    (with-org-mindmap-test initial "Root" #'org-mindmap--return
+    (with-org-mindmap-test initial "Root" #'org-mindmap-return
                            (let ((content (buffer-substring-no-properties (point-min) (point-max))))
                              (should (string-match-p "Root" content))
                              (should (string-match-p "──" content))))))
