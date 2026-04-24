@@ -8,8 +8,15 @@ context: |
     - Focus on the visual 2D representation as the primary user interface.
     - Preserve the isomorphism between lists and mind maps.
     - Use Unicode box-drawing characters for all visual connections.
+    - Use "SHALL" for mandatory requirements.
+    - Organize requirements by capability-based subdirectories in `openspec/specs/`.
+    - Every requirement MUST include at least one `Scenario` with GIVEN/WHEN/THEN steps.
 
 rules:
+  spec:
+    - Use capability subdirectories (e.g., `specs/parser/spec.md`).
+    - Format requirements using markdown headers (### Requirement).
+    - Format scenarios using markdown headers (#### Scenario).
   proposal:
     - Must include an ASCII/Unicode example of the proposed change.
     - Must describe the impact on both the 2D layout and the logical tree structure.
