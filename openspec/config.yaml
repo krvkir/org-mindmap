@@ -1,0 +1,17 @@
+schema: spec-driven
+
+context: |
+  Project: org-mindmap
+  Domain: Emacs, Org-mode, ASCII/Unicode Visualization
+  Tech Stack: Emacs Lisp, Org-mode API
+  Conventions:
+    - Focus on the visual 2D representation as the primary user interface.
+    - Preserve the isomorphism between lists and mind maps.
+    - Use Unicode box-drawing characters for all visual connections.
+
+rules:
+  proposal:
+    - Must include an ASCII/Unicode example of the proposed change.
+    - Must describe the impact on both the 2D layout and the logical tree structure.
+  tasks:
+    - Prefer small, incremental changes that maintain a valid 2D representation at each step.
