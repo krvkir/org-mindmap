@@ -20,12 +20,12 @@ Users want to customize the visual appearance of mindmaps (e.g., switching from 
 
 ## Impact
 
-- `org-mindmap-parser.el`: Constants and variables for delimiters and connectors will be replaced by user-configurable lists. Parsing logic will use a combined registry of all allowed symbols.
+- `org-mindmap-parser.el`: `org-mindmap-parser-root-delimiters` and `org-mindmap-parser-connectors` will be user-configurable lists of sets. Parsing logic will use a combined registry of all allowed symbols.
 - `org-mindmap.el`: Rendering logic will be updated to fetch symbols from the active pack.
-- User configuration: Existing `org-mindmap-parser-root-delimiters` will be deprecated or converted to the new format.
+- User configuration: Existing `org-mindmap-parser-root-delimiters` (cons cell) will be migrated to a list of cons cells.
 
 ```
-Example: Migration from Straight to Rounded
+Example: Migration from Bracket to Unicode Delimiters
 
 GIVEN a mindmap with angle connectors:
 【 Root 】 ┬─ Child 1
@@ -35,5 +35,4 @@ WHEN the user hits C-c C-c with rounded connectors active:
 THEN it renders as:
 ⏴ Root ⏵ ┬─ Child 1
          ╰─ Child 2
-
 ```
