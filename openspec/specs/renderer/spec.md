@@ -29,13 +29,21 @@ The renderer SHALL respect horizontal padding requirements between nodes.
 - WHEN rendering nodes
 - THEN the renderer SHALL ensure at least `N` whitespace characters exist between a node's text and its sibling's vertical connector.
 
-### Requirement: Unicode Connector Selection
-The system SHALL select appropriate box-drawing characters based on the branching structure.
+### Requirement: Symbol Selection and Pack Usage
+The system SHALL select box-drawing characters and root delimiters based on the active primary sets.
 
-#### Scenario: Junction character selection
-- GIVEN a node connecting to children above and below it
-- WHEN the connection is on the `right` side
-- THEN the system SHALL use the `├` character as the vertical spine junction.
+#### Scenario: Primary connector pack usage
+- GIVEN a mindmap being rendered
+- THEN the renderer SHALL exclusively use the first connector pack in `org-mindmap-parser-connectors`.
+
+#### Scenario: Primary root delimiter usage
+- GIVEN a root node being rendered
+- THEN the renderer SHALL wrap the text in the first delimiter pair in `org-mindmap-parser-root-delimiters`.
+
+#### Scenario: Automatic symbol migration
+- WHEN a mindmap is parsed using legacy symbols (from non-primary sets)
+- AND the user triggers a re-render
+- THEN the renderer SHALL write the new primary symbols to the buffer.
 
 ### Requirement: Visual Styling and Protection
 The renderer SHALL apply semantic styling and optional editing protections to the canvas.

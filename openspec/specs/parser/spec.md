@@ -10,19 +10,19 @@ The parser SHALL traverse the character grid using box-drawing connectivity rule
 
 #### Scenario: Connector port mapping
 - GIVEN a character in the grid
-- WHEN it is a recognized box-drawing character (e.g., `┬`)
-- THEN the parser SHALL determine its available entry/exit ports (e.g., `left`, `right`, `down` for `┬`).
+- WHEN it is a recognized character from any configured connector pack
+- THEN the parser SHALL determine its available entry/exit ports based on its pack index.
 
 #### Scenario: Following connectivity
-- GIVEN a connector character `─` at coordinates (r, c)
-- WHEN the parser is moving in the `right` direction
-- THEN it SHALL check for a valid connector or node label at (r, c+1).
+- GIVEN a connector character at coordinates (r, c)
+- WHEN the parser is moving in a valid direction
+- THEN it SHALL check for a valid connector (from any pack) or node label at the next coordinates.
 
 ### Requirement: Root Detection Fallback
 The parser SHALL identify the root node even in the absence of explicit delimiters.
 
 #### Scenario: Explicit root detection
-- GIVEN a node enclosed in `⏴` and `⏵`
+- GIVEN a node enclosed in any delimiter pair from the configured sets
 - THEN the parser SHALL immediately identify it as the root.
 
 #### Scenario: Implicit root detection

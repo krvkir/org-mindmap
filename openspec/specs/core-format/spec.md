@@ -21,10 +21,18 @@ The system SHALL allow per-block configuration of layout algorithms via header p
 - WHEN the header property `:layout` is set to `left`, `compact`, or `centered`
 - THEN the renderer SHALL apply the corresponding algorithm to node positioning.
 
-### Requirement: Visual Delimiters
-The system SHALL use specific Unicode characters to distinguish structural elements from node text.
+### Requirement: Symbol Customization and Validation
+The system SHALL allow users to define multiple sets of symbols for connectors and root delimiters while preventing parsing collisions.
 
-#### Scenario: Root node identification
-- GIVEN a mind map block
-- WHEN the text is enclosed in `⏴` and `⏵`
-- THEN the parser SHALL treat that text as the root node of the tree.
+#### Scenario: Defining connector packs
+- WHEN a user defines a list of lists in `org-mindmap-parser-connectors`
+- THEN all characters in those lists SHALL be valid for parsing.
+
+#### Scenario: Defining delimiter sets
+- WHEN a user defines a list of cons cells in `org-mindmap-parser-root-delimiters`
+- THEN text enclosed in any of those pairs SHALL be recognized as a root node.
+
+#### Scenario: Forbidden symbol guard
+- THE system SHALL NOT allow common hand-typeable symbols (`[`, `]`, `<`, `>`, `=`, `!`, `|`, `-`) to be used in connector or delimiter sets.
+- WHEN a user attempts to use a forbidden symbol
+- THEN the system SHALL signal an error or prevent the configuration from being applied.
