@@ -47,10 +47,29 @@
   :type 'integer
   :group 'org-mindmap)
 
-(defcustom org-mindmap-parser-root-delimiters '("⏴" . "⏵")
-  "A cons cell containing the left and right delimiter strings for a root node.
-Use symbols you don't directly type, such as unicode plotting character."
-  :type '(cons string string)
+(defcustom org-mindmap-parser-connectors '((?─ ?│ ?┬ ?┴ ?├ ?┤ ?┼ ?╭ ?╮ ?╰ ?╯)
+                                           (?─ ?│ ?┬ ?┴ ?├ ?┤ ?┼ ?┌ ?┐ ?└ ?┘))
+  "List of connector packs. The first pack is used for rendering.
+Indices: 0:Horizontal, 1:Vertical, 2:T-Down, 3:T-Up, 4:T-Right, 5:T-Left,
+         6:Cross, 7:Corner-TL, 8:Corner-TR, 9:Corner-BL, 10:Corner-BR"
+  :type '(repeat (list character character character character character
+                       character character character character character
+                       character))
+  :group 'org-mindmap)
+
+(defcustom org-mindmap-parser-root-delimiters '(("⏴" . "⏵")
+                                                ("【" . "】")
+                                                ("«" . "»"))
+  "List of root delimiter pairs (cons cells).
+The first pair is used for rendering.
+Use symbols you don't directly type, such as unicode plotting characters."
+  :set (lambda (symbol value)
+         (set-default symbol
+                      (if (and (consp value) (stringp (car value)))
+                          (list value)
+                        value)))
+  :type '(choice (cons string string)
+                 (repeat (cons string string)))
   :group 'org-mindmap)
 
 
@@ -69,25 +88,42 @@ If `org-mindmap-parser-debug' is t, format FMT with ARGS."
 (defconst org-mindmap-parser-dir-left  '(-1 . 0))
 (defconst org-mindmap-parser-dir-right '(1 . 0))
 
-(defconst org-mindmap-parser-ports
-  (let ((table (make-hash-table :test 'equal)))
-    (puthash ?─ (list org-mindmap-parser-dir-left org-mindmap-parser-dir-right) table)
-    (puthash ?│ (list org-mindmap-parser-dir-up org-mindmap-parser-dir-down) table)
-    (puthash ?┬ (list org-mindmap-parser-dir-left org-mindmap-parser-dir-right org-mindmap-parser-dir-down) table)
-    (puthash ?┴ (list org-mindmap-parser-dir-left org-mindmap-parser-dir-up org-mindmap-parser-dir-right) table)
-    (puthash ?├ (list org-mindmap-parser-dir-up org-mindmap-parser-dir-right org-mindmap-parser-dir-down) table)
-    (puthash ?┤ (list org-mindmap-parser-dir-left org-mindmap-parser-dir-up org-mindmap-parser-dir-down) table)
-    (puthash ?┼ (list org-mindmap-parser-dir-left org-mindmap-parser-dir-up org-mindmap-parser-dir-right org-mindmap-parser-dir-down) table)
-    (puthash ?╭ (list org-mindmap-parser-dir-right org-mindmap-parser-dir-down) table)
-    (puthash ?╮ (list org-mindmap-parser-dir-left org-mindmap-parser-dir-down) table)
-    (puthash ?╰ (list org-mindmap-parser-dir-up org-mindmap-parser-dir-right) table)
-    (puthash ?╯ (list org-mindmap-parser-dir-up org-mindmap-parser-dir-left) table)
-    ;; DOS equivalents
-    (puthash ?┌ (list org-mindmap-parser-dir-right org-mindmap-parser-dir-down) table)
-    (puthash ?┐ (list org-mindmap-parser-dir-left org-mindmap-parser-dir-down) table)
-    (puthash ?└ (list org-mindmap-parser-dir-up org-mindmap-parser-dir-right) table)
-    (puthash ?┘ (list org-mindmap-parser-dir-up org-mindmap-parser-dir-left) table)
-    table))
+(defvar org-mindmap-parser--symbol-registry nil
+  "Cache of all recognized connector and delimiter symbols.")
+
+(defun org-mindmap-parser--get-symbol-registry ()
+  "Return a hash table mapping all configured symbols to their connectivity."
+  (or org-mindmap-parser--symbol-registry
+      (let ((table (make-hash-table :test 'equal))
+            (port-logic (list (list org-mindmap-parser-dir-left org-mindmap-parser-dir-right) ; 0: Horiz
+                              (list org-mindmap-parser-dir-up org-mindmap-parser-dir-down) ; 1: Vert
+                              (list org-mindmap-parser-dir-left org-mindmap-parser-dir-right org-mindmap-parser-dir-down) ; 2: T-Down
+                              (list org-mindmap-parser-dir-left org-mindmap-parser-dir-up org-mindmap-parser-dir-right) ; 3: T-Up
+                              (list org-mindmap-parser-dir-up org-mindmap-parser-dir-right org-mindmap-parser-dir-down) ; 4: T-Right
+                              (list org-mindmap-parser-dir-left org-mindmap-parser-dir-up org-mindmap-parser-dir-down) ; 5: T-Left
+                              (list org-mindmap-parser-dir-left org-mindmap-parser-dir-up org-mindmap-parser-dir-right org-mindmap-parser-dir-down) ; 6: Cross
+                              (list org-mindmap-parser-dir-right org-mindmap-parser-dir-down) ; 7: Corner-TL
+                              (list org-mindmap-parser-dir-left org-mindmap-parser-dir-down) ; 8: Corner-TR
+                              (list org-mindmap-parser-dir-up org-mindmap-parser-dir-right) ; 9: Corner-BL
+                              (list org-mindmap-parser-dir-up org-mindmap-parser-dir-left)))) ; 10: Corner-BR
+        ;; Add all connectors from all packs
+        (dolist (pack org-mindmap-parser-connectors)
+          (cl-loop for char in pack
+                   for ports in port-logic
+                   do (puthash char ports table)))
+        ;; Add all delimiters
+        (dolist (pair org-mindmap-parser-root-delimiters)
+          (puthash (string-to-char (car pair)) (list org-mindmap-parser-dir-left org-mindmap-parser-dir-right) table)
+          (puthash (string-to-char (cdr pair)) (list org-mindmap-parser-dir-left org-mindmap-parser-dir-right) table))
+        (setq org-mindmap-parser--symbol-registry table))))
+
+(defun org-mindmap-parser--clear-registry ()
+  "Clear the symbol registry cache."
+  (setq org-mindmap-parser--symbol-registry nil))
+
+;; Ensure cache is cleared when configuration changes
+(add-variable-watcher 'org-mindmap-parser-connectors (lambda (_ _ _ _) (org-mindmap-parser--clear-registry)))
+(add-variable-watcher 'org-mindmap-parser-root-delimiters (lambda (_ _ _ _) (org-mindmap-parser--clear-registry)))
 
 (defun org-mindmap-parser--invert-dir (dir)
   "Reverse a direction vector DIR."
@@ -95,10 +131,15 @@ If `org-mindmap-parser-debug' is t, format FMT with ARGS."
 
 (defun org-mindmap-parser--is-connector (char)
   "Return non-nil if CHAR is a recognized connector character."
+  (and char (gethash char (org-mindmap-parser--get-symbol-registry))))
+
+(defun org-mindmap-parser--is-delimiter (char)
+  "Return non-nil if CHAR is a recognized root delimiter character."
   (and char
-       (or (gethash char org-mindmap-parser-ports)
-           (string= (char-to-string char) (car org-mindmap-parser-root-delimiters))
-           (string= (char-to-string char) (cdr org-mindmap-parser-root-delimiters)))))
+       (cl-some (lambda (pair)
+                  (or (string= (char-to-string char) (car pair))
+                      (string= (char-to-string char) (cdr pair))))
+                org-mindmap-parser-root-delimiters)))
 
 (defun org-mindmap-parser--is-whitespace (char)
   "Return non-nil if CHAR is whitespace or null."
@@ -107,10 +148,7 @@ If `org-mindmap-parser-debug' is t, format FMT with ARGS."
 (defun org-mindmap-parser--dirs (char)
   "Return entry ports for a CHAR."
   (when (org-mindmap-parser--is-connector char)
-    (if (or (string= (char-to-string char) (car org-mindmap-parser-root-delimiters))
-            (string= (char-to-string char) (cdr org-mindmap-parser-root-delimiters)))
-        (list org-mindmap-parser-dir-left org-mindmap-parser-dir-right)
-      (gethash char org-mindmap-parser-ports))))
+    (gethash char (org-mindmap-parser--get-symbol-registry))))
 
 (defun org-mindmap-parser--grid-get (lines row col)
   "Safely fetch a character from 2D array of strings LINES at ROW and COL."
@@ -252,26 +290,27 @@ VISITED keeps track of visited locations."
 (defun org-mindmap-parser--find-explicit-root (lines)
   "Find an explicit root in LINES."
   (let ((explicit-root nil)
-        (left-delim (car org-mindmap-parser-root-delimiters))
-        (right-delim (cdr org-mindmap-parser-root-delimiters))
         (height (length lines)))
-    (cl-loop for row from 0 to (1- height)
-             until explicit-root
-             do
-             (let ((line (aref lines row)))
-               (when (string-match (concat (regexp-quote left-delim) "\\(.*?\\)" (regexp-quote right-delim)) line)
-                 (let ((col-start (match-beginning 0))
-                       (col-end (match-end 0))
-                       (text (string-trim (match-string 1 line))))
-                   (org-mindmap-parser--debug "Found explicit root node: %s at (%d, %d)" text row col-start)
-                   (setq explicit-root (org-mindmap-parser-make-node
-                                        :id (cl-gensym "node")
-                                        :text text
-                                        :depth 0
-                                        :row row
-                                        :col col-start
-                                        :width (1+ (- col-end col-start))
-                                        :side nil))))))
+    (dolist (pair org-mindmap-parser-root-delimiters)
+      (let ((left (car pair))
+            (right (cdr pair)))
+        (cl-loop for row from 0 to (1- height)
+                 until explicit-root
+                 do
+                 (let ((line (aref lines row)))
+                   (when (string-match (concat (regexp-quote left) "\\(.*?\\)" (regexp-quote right)) line)
+                     (let ((col-start (match-beginning 0))
+                           (col-end (match-end 0))
+                           (text (string-trim (match-string 1 line))))
+                       (org-mindmap-parser--debug "Found explicit root node: %s at (%d, %d)" text row col-start)
+                       (setq explicit-root (org-mindmap-parser-make-node
+                                            :id (cl-gensym "node")
+                                            :text text
+                                            :depth 0
+                                            :row row
+                                            :col col-start
+                                            :width (1+ (- col-end col-start))
+                                            :side nil))))))))
     explicit-root))
 
 (defun org-mindmap-parser--find-implicit-root (lines visited)

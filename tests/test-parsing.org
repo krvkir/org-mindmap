@@ -438,3 +438,27 @@ Root2 ╰─ B
       - A (row:0, col:9, side:right)
       - B (row:1, col:9, side:right)
 #+end_expected
+* Test Case 20: Legacy Delimiters (Guillemets)
+#+begin_mindmap
+« Guillemet Root » ┬─ Node A
+                   ╰─ Node B
+#+end_mindmap
+#+begin_expected
+    - Guillemet Root (row:0, col:0, side:nil)
+      - Node A (row:0, col:22, side:right)
+      - Node B (row:1, col:22, side:right)
+#+end_expected
+
+* Test Case 21: Legacy Connectors (Straight/DOS)
+#+begin_mindmap
+┌─ Root ─┐
+│        ├─ Node A
+│        └─ Node B
+#+end_mindmap
+#+begin_expected
+    -  (row:0, col:0, side:nil)
+      - Root (row:0, col:3, side:right)
+        - Node A (row:1, col:12, side:right)
+        - Node B (row:2, col:12, side:right)
+#+end_expected
+

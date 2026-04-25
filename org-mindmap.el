@@ -286,27 +286,29 @@ Requires COL, LAYOUT, and SPACING."
   "Return the actual string to be displayed for NODE, including delimiters if root."
   (let ((raw-text (org-mindmap-parser-node-text node)))
     (if (null (org-mindmap-parser-node-parent node))
-        (if (string= raw-text "")
-            (concat (car org-mindmap-parser-root-delimiters) (cdr org-mindmap-parser-root-delimiters))
-          (concat (car org-mindmap-parser-root-delimiters) " " raw-text " " (cdr org-mindmap-parser-root-delimiters)))
+        (let ((pair (car org-mindmap-parser-root-delimiters)))
+          (if (string= raw-text "")
+              (concat (car pair) (cdr pair))
+            (concat (car pair) " " raw-text " " (cdr pair))))
       raw-text)))
 
 (defun org-mindmap--connector-symbol (has-above has-below has-left has-right)
   "Determine correct box-drawing character based on connection directions.
 HAS-ABOVE, HAS-BELOW, HAS-LEFT, HAS-RIGHT are booleans."
-  (cond
-   ((and has-above has-below has-left has-right) "┼")
-   ((and has-above has-below has-left (not has-right)) "┤")
-   ((and has-above has-below (not has-left) has-right) "├")
-   ((and has-above has-below (not has-left) (not has-right)) "│")
-   ((and has-above (not has-below) has-left has-right) "┴")
-   ((and has-above (not has-below) has-left (not has-right)) "╯")
-   ((and has-above (not has-below) (not has-left) has-right) "╰")
-   ((and (not has-above) has-below has-left has-right) "┬")
-   ((and (not has-above) has-below has-left (not has-right)) "╮")
-   ((and (not has-above) has-below (not has-left) has-right) "╭")
-   ((and (not has-above) (not has-below) has-left has-right) "─")
-   (t "│")))
+  (let ((pack (car org-mindmap-parser-connectors)))
+    (cond
+     ((and has-above has-below has-left has-right) (char-to-string (nth 6 pack))) ; ┼
+     ((and has-above has-below has-left (not has-right)) (char-to-string (nth 5 pack))) ; ┤
+     ((and has-above has-below (not has-left) has-right) (char-to-string (nth 4 pack))) ; ├
+     ((and has-above has-below (not has-left) (not has-right)) (char-to-string (nth 1 pack))) ; │
+     ((and has-above (not has-below) has-left has-right) (char-to-string (nth 3 pack))) ; ┴
+     ((and has-above (not has-below) has-left (not has-right)) (char-to-string (nth 10 pack))) ; ╯
+     ((and has-above (not has-below) (not has-left) has-right) (char-to-string (nth 9 pack))) ; ╰
+     ((and (not has-above) has-below has-left has-right) (char-to-string (nth 2 pack))) ; ┬
+     ((and (not has-above) has-below has-left (not has-right)) (char-to-string (nth 8 pack))) ; ╮
+     ((and (not has-above) has-below (not has-left) has-right) (char-to-string (nth 7 pack))) ; ╭
+     ((and (not has-above) (not has-below) has-left has-right) (char-to-string (nth 0 pack))) ; ─
+     (t (char-to-string (nth 1 pack))))))
 
 (defun org-mindmap--draw-node (node)
   "Write NODE text and box-drawing connectors onto the buffer canvas."
@@ -323,8 +325,9 @@ HAS-ABOVE, HAS-BELOW, HAS-LEFT, HAS-RIGHT are booleans."
 
     (if (null (org-mindmap-parser-node-parent node))
         (let* ((raw-text (org-mindmap-parser-node-text node))
-               (l-delim (car org-mindmap-parser-root-delimiters))
-               (r-delim (cdr org-mindmap-parser-root-delimiters)))
+               (pair (car org-mindmap-parser-root-delimiters))
+               (l-delim (car pair))
+               (r-delim (cdr pair)))
           (insert (org-mindmap--propertize-connector l-delim))
           (unless (string= raw-text "")
             (insert (org-mindmap--propertize-text " "))
