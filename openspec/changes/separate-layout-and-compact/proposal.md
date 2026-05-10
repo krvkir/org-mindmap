@@ -34,10 +34,10 @@ After (orthogonal settings):
 ## Capabilities
 
 ### New Capabilities
-- `compaction-option`: A separate `:compacted` boolean block property and corresponding defcustom, independent of layout choice. Controls whether the compaction algorithm fills vacant vertical gaps.
+<!-- None. Compaction requirements are additions to existing renderer, ui, and core-format capabilities. -->
 
 ### Modified Capabilities
-- `renderer`: Layout algorithm now takes separate `layout` and `compacted` parameters. The compaction loop is gated on `compacted`, not on the layout value. The centering step is gated on `layout` being `centered`, not on the old combined value. The `left` symbol is replaced by `top` throughout.
+- `renderer`: Layout algorithm now takes separate `layout` and `compacted` parameters. The compaction loop is gated on `compacted`, not on the layout value. The centering step is gated on `layout` being `centered`, not on the old combined value. The `left` symbol is replaced by `top` throughout. Also gains new requirements: `:compacted` header property support and `org-mindmap-default-compacted` defcustom.
 - `core-format`: The `:layout` header property now accepts only `top` and `centered` (removing `compact` and `left`). A new `:compacted` header property accepts boolean values. Legacy `left` and `compact` values in existing documents need migration handling.
 - `ui`: `org-mindmap-switch-layout` cycles `top ↔ centered` only. A new `org-mindmap-toggle-compaction` command is introduced. Default layout defcustom is updated.
 
