@@ -635,6 +635,7 @@ Accepts mindmap PROPS."
     (unless region (error "Not inside a mindmap region"))
     (let* ((start (car region))
            (end (cdr region))
+           (props (org-mindmap--parse-properties start))
            (roots (org-mindmap-parser-parse-region start end))
            (orig-row (save-excursion
                        (let ((cur-line (line-number-at-pos (point)))
@@ -642,7 +643,7 @@ Accepts mindmap PROPS."
                          (- cur-line start-line 1))))
            (orig-col (current-column))
            (target-node (org-mindmap--find-node-by-pos roots orig-row orig-col)))
-      (list start end roots target-node))))
+      (list start end props roots target-node))))
 
 (defun org-mindmap--insert-after (lst target new-item)
   "Insert NEW-ITEM into LST immediately after TARGET."
@@ -671,7 +672,7 @@ If TEXT is nil or empty, creates an empty node for immediate editing.
 With prefix argument at root node, creates a child on the left side."
   (interactive (list (read-string "Child text: ")))
   (setq text (or text ""))
-  (cl-destructuring-bind (start end roots target-node) (org-mindmap--get-state)
+  (cl-destructuring-bind (start end props roots target-node) (org-mindmap--get-state)
     (unless target-node (error "No node at point"))
     (let* ((side (if (null (org-mindmap-parser-node-parent target-node))
                      (if current-prefix-arg 'left 'right)
@@ -682,9 +683,7 @@ With prefix argument at root node, creates a child on the left side."
                                                    :side side)))
       (setf (org-mindmap-parser-node-children target-node)
             (append (org-mindmap-parser-node-children target-node) (list new-node)))
-      (org-mindmap--update-buffer start end roots
-                                  (org-mindmap-parser-node-id new-node)
-                                  (org-mindmap--parse-properties start))
+      (org-mindmap--update-buffer start end roots (org-mindmap-parser-node-id new-node) props)
       new-node)))
 
 (defun org-mindmap-insert-sibling (&optional text)
@@ -693,7 +692,7 @@ If TEXT is nil or empty, creates an empty node for immediate editing.
 If target-node is the root node, it calls `org-mindmap-insert-child`."
   (interactive (list (read-string "Sibling text: ")))
   (setq text (or text ""))
-  (cl-destructuring-bind (start end roots target-node) (org-mindmap--get-state)
+  (cl-destructuring-bind (start end props roots target-node) (org-mindmap--get-state)
     (unless target-node (error "No node at point"))
     (if (not (equal (car roots) target-node))
         (let* ((parent (org-mindmap-parser-node-parent target-node))
@@ -706,9 +705,7 @@ If target-node is the root node, it calls `org-mindmap-insert-child`."
                 (setf (org-mindmap-parser-node-children parent)
                       (org-mindmap--insert-after siblings target-node new-node)))
             (setq roots (org-mindmap--insert-after roots target-node new-node)))
-          (org-mindmap--update-buffer start end roots
-                                      (org-mindmap-parser-node-id new-node)
-                                      (org-mindmap--parse-properties start))
+          (org-mindmap--update-buffer start end roots (org-mindmap-parser-node-id new-node) props)
           new-node)
       (org-mindmap-insert-child text))))
 
@@ -718,19 +715,17 @@ If TEXT is nil or empty, creates an empty node for immediate editing.
 In the single-root model, this is only allowed if no root exists."
   (interactive (list (read-string "Root text: ")))
   (setq text (or text ""))
-  (cl-destructuring-bind (start end roots _target-node) (org-mindmap--get-state)
+  (cl-destructuring-bind (start end props roots _target-node) (org-mindmap--get-state)
     (if (and roots (> (length roots) 0))
         (user-error "A root node already exists.  This mindmap only supports a single root")
       (let ((new-node (org-mindmap-parser-make-node :id (gensym "node") :text text)))
         (setq roots (list new-node))
-        (org-mindmap--update-buffer start end roots
-                                    (org-mindmap-parser-node-id new-node)
-                                    (org-mindmap--parse-properties start))))))
+        (org-mindmap--update-buffer start end roots (org-mindmap-parser-node-id new-node) props)))))
 
 (defun org-mindmap-delete-node ()
   "Remove node at cursor position and all descendants."
   (interactive)
-  (cl-destructuring-bind (start end roots target-node) (org-mindmap--get-state)
+  (cl-destructuring-bind (start end props roots target-node) (org-mindmap--get-state)
     (unless target-node (error "No node at point"))
     (when (and (org-mindmap-parser-node-children target-node)
                org-mindmap-confirm-delete
@@ -749,8 +744,7 @@ In the single-root model, this is only allowed if no root exists."
             (error "Cannot delete the last root node")
           (setq next-focus-id (org-mindmap--get-next-focus roots target-node nil))
           (setq roots (remq target-node roots))))
-      (org-mindmap--update-buffer start end roots next-focus-id
-                                  (org-mindmap--parse-properties start)))))
+      (org-mindmap--update-buffer start end roots next-focus-id props))))
 
 ;;
 ;; Movement Operations — Reorder and Restructure
@@ -780,7 +774,7 @@ In the single-root model, this is only allowed if no root exists."
 (defun org-mindmap-move-up ()
   "Swap node with previous sibling."
   (interactive)
-  (cl-destructuring-bind (start end roots target-node) (org-mindmap--get-state)
+  (cl-destructuring-bind (start end props roots target-node) (org-mindmap--get-state)
     (unless target-node (error "No node at point"))
     (let* ((parent (org-mindmap-parser-node-parent target-node))
            (all-siblings (if parent (org-mindmap-parser-node-children parent) roots))
@@ -795,14 +789,12 @@ In the single-root model, this is only allowed if no root exists."
         (if parent
             (setf (org-mindmap-parser-node-children parent) all-siblings)
           (setq roots all-siblings))
-        (org-mindmap--update-buffer start end roots
-                                    (org-mindmap-parser-node-id target-node)
-                                    (org-mindmap--parse-properties start))))))
+        (org-mindmap--update-buffer start end roots (org-mindmap-parser-node-id target-node) props)))))
 
 (defun org-mindmap-move-down ()
   "Swap node with next sibling."
   (interactive)
-  (cl-destructuring-bind (start end roots target-node) (org-mindmap--get-state)
+  (cl-destructuring-bind (start end props roots target-node) (org-mindmap--get-state)
     (unless target-node (error "No node at point"))
     (let* ((parent (org-mindmap-parser-node-parent target-node))
            (all-siblings (if parent (org-mindmap-parser-node-children parent) roots))
@@ -817,14 +809,12 @@ In the single-root model, this is only allowed if no root exists."
         (if parent
             (setf (org-mindmap-parser-node-children parent) all-siblings)
           (setq roots all-siblings))
-        (org-mindmap--update-buffer start end roots
-                                    (org-mindmap-parser-node-id target-node)
-                                    (org-mindmap--parse-properties start))))))
+        (org-mindmap--update-buffer start end roots (org-mindmap-parser-node-id target-node) props)))))
 
 (defun org-mindmap-promote ()
   "Move node up one level (becomes sibling of parent) or shift side if at root."
   (interactive)
-  (cl-destructuring-bind (start end roots target-node) (org-mindmap--get-state)
+  (cl-destructuring-bind (start end props roots target-node) (org-mindmap--get-state)
     (unless target-node (error "No node at point"))
     (org-mindmap-validate-move 'promote target-node nil nil)
     (let* ((parent (org-mindmap-parser-node-parent target-node))
@@ -846,14 +836,12 @@ In the single-root model, this is only allowed if no root exists."
         ;; Inherit side from new parent (grandparent) if it has one
         (when (org-mindmap-parser-node-side grandparent)
           (org-mindmap--set-side-recursive target-node (org-mindmap-parser-node-side grandparent)))))
-    (org-mindmap--update-buffer start end roots
-                                (org-mindmap-parser-node-id target-node)
-                                (org-mindmap--parse-properties start))))
+    (org-mindmap--update-buffer start end roots (org-mindmap-parser-node-id target-node) props)))
 
 (defun org-mindmap-demote ()
   "Move node down one level (becomes child of previous sibling)."
   (interactive)
-  (cl-destructuring-bind (start end roots target-node) (org-mindmap--get-state)
+  (cl-destructuring-bind (start end props roots target-node) (org-mindmap--get-state)
     (unless target-node (error "No node at point"))
     (let* ((parent (org-mindmap-parser-node-parent target-node))
            (all-siblings (if parent (org-mindmap-parser-node-children parent) roots))
@@ -871,9 +859,7 @@ In the single-root model, this is only allowed if no root exists."
               (append (org-mindmap-parser-node-children prev-sibling) (list target-node)))
         ;; Inherit side from new parent
         (org-mindmap--set-side-recursive target-node (org-mindmap-parser-node-side prev-sibling))
-        (org-mindmap--update-buffer start end roots
-                                    (org-mindmap-parser-node-id target-node)
-                                    (org-mindmap--parse-properties start))))))
+        (org-mindmap--update-buffer start end roots (org-mindmap-parser-node-id target-node) props)))))
 
 ;;
 ;; Auxilliary functions: conversion from and to org lists.
@@ -1064,11 +1050,10 @@ nodes of that side."
 (defun org-mindmap-edit-node ()
   "Edit the text of the node at point and refresh the mindmap."
   (interactive)
-  (cl-destructuring-bind (start end roots target-node) (org-mindmap--get-state)
+  (cl-destructuring-bind (start end props roots target-node) (org-mindmap--get-state)
     (unless target-node (error "No node at point"))
     (let* ((old-text (org-mindmap-parser-node-text target-node))
-           (new-text (read-string "Edit node: " old-text))
-           (props (org-mindmap--parse-properties start)))
+           (new-text (read-string "Edit node: " old-text)))
       (setf (org-mindmap-parser-node-text target-node) new-text)
       (org-mindmap--update-buffer start end roots (org-mindmap-parser-node-id target-node) props))))
 
