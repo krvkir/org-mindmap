@@ -74,7 +74,7 @@
           (setq indent-tabs-mode nil)
           (let ((inhibit-read-only t))
             (dolist (root roots)
-              (org-mindmap-draw-subtree root))))
+              (org-mindmap-draw-subtree root props))))
         (setq t-draw (* 1000 (- (float-time) st))))
 
       (message "BENCHMARK RESULTS (Test Case 12):")
