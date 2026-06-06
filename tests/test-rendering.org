@@ -71,3 +71,28 @@ Three ─╯          ╰─ Identity  │                       ╭─ Khurasan
     size ─┤
 constant ─╯
 #+end_expected
+
+* Test Case 6: Complex Bidirectional (Centered, wrapped) :layout centered :compacted t :max-width 12
+#+begin_sexp
+("Iran and some more words for testing" nil 
+ ("One and some more words for testing" left)
+ ("Two" left)
+ ("Three" left)
+ ("Geography" right ("constant" right) ("size" right ("3 x France" right) ("6 x UK" right)) ("south" right ("Persian Gulf and some more words for testing" right)) ("east" right ("mountains of" right ("Khurasan and some more words for testing" right) ("Sistan" right) ("Baluchestan" right))) ("west" right))
+ ("Identity" right))
+#+end_sexp
+#+begin_expected
+                                           ╭─ constant
+                                           ├─ size ┬─ 3 x France
+                                           │       ╰─ 6 x UK
+                                           │        ╭─ Persian Gulf
+One and some ─╮                            ├─ south ╯  and some    
+more words    │                            │           more words  
+for testing   ├ « Iran and  » ┬─ Geography ┤           for testing 
+         Two ─┤   some more   ╰─ Identity  │                       ╭─ Khurasan and
+       Three ─╯   words for                │                       │  some more   
+                  testing                  ├─ east ── mountains of ┤  words for   
+                                           ╰─ west                 │  testing     
+                                                                   ├─ Sistan
+                                                                   ╰─ Baluchestan
+#+end_expected

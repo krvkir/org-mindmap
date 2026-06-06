@@ -40,7 +40,7 @@
   "Editable mindmap visualization within `org-mode'."
   :group 'org)
 
-(defcustom org-mindmap-spacing 1
+(defcustom org-mindmap-default-spacing 1
   "Characters between nodes."
   :type 'integer
   :group 'org-mindmap)
@@ -58,13 +58,11 @@ a denser layout.  When nil, children are stacked sequentially."
   :group 'org-mindmap)
 
 (defcustom org-mindmap-default-max-width nil
-  "Default maximal width limit for node text soft wrapping (nil for no wrapping)."
-  :type 'integer
-  :group 'org-mindmap)
-
-(defcustom org-mindmap-default-adaptive-max-width nil
-  "Determine max-width from window width by default (equivalent to setting :adaptive-max-width t for all the maps)."
-  :type 'boolean
+  "Default maximal width limit for node text soft wrapping:
+- nil: no wrapping;
+- a non-negative integer: constant max width (0 means a newline after each word);
+- 'auto: try to fit the tree into the window, calculating max-width based on tree depth and window width."
+  :type '(choice integer (const auto))
   :group 'org-mindmap)
 
 (defcustom org-mindmap-default-wrap-leaves t
@@ -172,10 +170,6 @@ Return (width height . lines) cons cell."
          (width (string-width (car lines)))
          (height (length lines)))
     (cons width (cons height lines))))
-
-(defun org-mindmap--calculate-max-width (max-depth)
-  "Return the optimal max-width for the current window and tree MAX-DEPTH."
-  (floor (/ (window-width) (1+ (* 2 max-depth)))))
 
 (defun org-mindmap--side-is (node side)
   "Check if NODE is on the given SIDE of the tree."
@@ -449,71 +443,76 @@ If :compacted is non-nil, nodes fill vacant vertical spaces."
 ;; Alignment, Properties, and Regeneration
 ;;
 
-(defun org-mindmap--parse-properties (start)
-  "Extract property list from the block header at START.
+(defun org-mindmap-parse-properties (start &optional props-string roots)
+  "Extract property list from the block header at START, or from PROPS-STRING if given.
 Handles legacy migration of :layout left/compact/centered."
-  (save-excursion
-    (goto-char start)
-    (when (re-search-forward "^[ \t]*#\\+begin_mindmap\\(.*\\)$" (line-end-position) t)
-      (let ((args-string (match-string 1))
-            (props nil))
-        ;; Parse mindmap block properties:
-        (while (string-match "\\(:[a-zA-Z-]+\\)[ \t]+\\([^ \t\n]+\\)" args-string)
-          (let ((key (intern (match-string 1 args-string)))
-                (val (match-string 2 args-string)))
+  (when (not props-string)
+    (save-excursion
+      (goto-char start)
+      (when (re-search-forward "^[ \t]*#\\+begin_mindmap\\(.*\\)$" (line-end-position) t)
+        (setq props-string (match-string 1)))))
+  (when props-string
+    (let ((props nil))
+      ;; Parse mindmap block properties:
+      (while (string-match "\\(:[a-zA-Z-]+\\)[ \t]+\\([^ \t\n]+\\)" props-string)
+        (let ((key (intern (match-string 1 props-string)))
+              (val (match-string 2 props-string)))
+          (cond
+           ((eq key :layout)
             (cond
-             ((eq key :layout)
-              (cond
-               ;; legacy layouts:
-               ;; ... "left" means top and sparse
-               ((eq val "left")
-                (setq props (plist-put props :layout "top"))
-                (setq props (plist-put props :compacted nil)))
-               ;; ... "compact" means top and compacted
-               ((eq val "compact")
-                (setq props (plist-put props :layout "top"))
-                (setq props (plist-put props :compacted t)))
-               (t
-                (setq props (plist-put props :layout val)))))
-             ((eq key :compacted)
-              (setq props (plist-put props key (not (string= val "nil")))))
-             ((eq key :max-width)
-              (setq props (plist-put props key (string-to-number val))))
-             ((eq key :adaptive-max-width)
-              (setq props (plist-put props key (not (string= val "nil")))))
-             ((eq key :wrap-leaves)
-              (setq props (plist-put props key (not (string= val "nil")))))
+             ;; legacy layouts:
+             ;; ... "left" means top and sparse
+             ((eq val "left")
+              (setq props (plist-put props :layout "top"))
+              (setq props (plist-put props :compacted nil)))
+             ;; ... "compact" means top and compacted
+             ((eq val "compact")
+              (setq props (plist-put props :layout "top"))
+              (setq props (plist-put props :compacted t)))
              (t
-              (setq props (plist-put props key val)))))
-          (setq args-string (substring args-string (match-end 0))))
-        ;; Fill in the default values.
-        (org-mindmap--populate-properties props)))))
+              (setq props (plist-put props :layout val)))))
+           ((eq key :compacted)
+            (setq props (plist-put props key (not (string= val "nil")))))
+           ((eq key :max-width)
+            (setq props (plist-put props key val)))
+           ((eq key :wrap-leaves)
+            (setq props (plist-put props key (not (string= val "nil")))))
+           (t
+            (setq props (plist-put props key val)))))
+        (setq props-string (substring props-string (match-end 0))))
+      ;; Fill in the default values.
+      (org-mindmap--populate-properties props roots))))
 
-(defun org-mindmap--populate-properties (&optional props)
+(defun org-mindmap--populate-properties (&optional props roots)
   "Populate PROOS plist with default properties for missing keys."
   (setq props (plist-put props :layout
                          (intern
                           (or (plist-get props :layout)
                               (symbol-name org-mindmap-default-layout)))))
   (setq props (plist-put props :spacing
-                         (string-to-number
-                          (or (plist-get props :spacing)
-                              (number-to-string org-mindmap-spacing)))))
+                         (if (plist-member props :spacing)
+                             (string-to-number (plist-get props :spacing))
+                           org-mindmap-default-spacing)))
   (setq props (plist-put props :compacted
                          (if (plist-member props :compacted)
                              (plist-get props :compacted)
                            org-mindmap-default-compacted)))
   (setq props (plist-put props :max-width
-                         (if (plist-member props :max-width)
-                             (plist-get props :max-width)
-                           (if (or org-mindmap-default-adaptive-max-width
-                                   (plist-get props :adaptive-max-width))
-                               (org-mindmap--calculate-max-width 4)
-                             org-mindmap-default-max-width))))
+                         (let ((val
+                                (if (plist-member props :max-width)
+                                    (pcase (plist-get props :max-width)
+                                      ("nil" nil)
+                                      ("auto" 'auto)
+                                      (_ (string-to-number (plist-get props :max-width))))
+                                  org-mindmap-default-max-width)))
+                           (if (and roots (eq val 'auto))
+                               (org-mindmap--calculate-max-width roots)
+                             val))))
   (setq props (plist-put props :wrap-leaves
                          (if (plist-member props :wrap-leaves)
                              (plist-get props :wrap-leaves)
                            org-mindmap-default-wrap-leaves)))
+  
   props)
 
 (defun org-mindmap--find-node-by-id (roots id)
@@ -547,14 +546,24 @@ Handles legacy migration of :layout left/compact/centered."
       (mapc traverse roots)
       nil)))
 
+(defun org-mindmap--calculate-max-width (roots)
+  "Return the optimal max-width for the current window and a tree growing from ROOTS."
+  (let* ((root (car roots))
+         (descendants (org-mindmap--descendants root))
+         (sides (seq-group-by #'org-mindmap-parser-node-side descendants))
+         (side-depths (mapcar #'(lambda (nodes) (mapcar #'org-mindmap-parser-node-depth nodes))
+                              (mapcar #'cdr sides)))
+         (depth (apply #'+ (mapcar #'seq-max side-depths))))
+    (floor (/ (- (window-width) (* 4 (1+ depth))) (1+ depth)))))
+
 (defun org-mindmap--get-state ()
   "Parse current region, return (start end roots target-node)."
   (let ((region (org-mindmap-parser-get-region)))
     (unless region (error "Not inside a mindmap region"))
     (let* ((start (car region))
            (end (cdr region))
-           (props (org-mindmap--parse-properties start))
            (roots (org-mindmap-parser-parse-region start end))
+           (props (org-mindmap-parse-properties start nil roots))
            ;; IDEA: Find the node at point at parsing stage. Also find the exact location
            ;; of the point in the node text, then use it in `edit-node'.
            (orig-row (save-excursion
@@ -570,7 +579,7 @@ Handles legacy migration of :layout left/compact/centered."
   (interactive)
   (let* ((region (org-mindmap-parser-get-region))
          (start (car region))
-         (props (org-mindmap--parse-properties start))
+         (props (org-mindmap-parse-properties start))
          (current (or (plist-get props :layout)
                       (symbol-name org-mindmap-default-layout)))
          (next (if (eq current 'centered) 'top 'centered)))
@@ -591,7 +600,7 @@ Handles legacy migration of :layout left/compact/centered."
   (interactive)
   (let* ((region (org-mindmap-parser-get-region))
          (start (car region))
-         (props (org-mindmap--parse-properties start))
+         (props (org-mindmap-parse-properties start))
          (new-compacted (not (plist-get props :compacted))))
     (save-excursion
       (goto-char start)

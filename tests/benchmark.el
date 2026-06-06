@@ -56,7 +56,7 @@
            (t-layout 0)
            (t-draw 0)
            (t-buffer-update 0)
-           (props (org-mindmap--parse-properties start)))
+           (props (org-mindmap-parse-properties start)))
 
       ;; Benchmark Parsing
       (let ((st (float-time)))
