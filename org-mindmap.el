@@ -65,6 +65,12 @@ a denser layout.  When nil, children are stacked sequentially."
   :type '(choice integer (const auto))
   :group 'org-mindmap)
 
+(defcustom org-mindmap-min-width 2
+  "Minimal width limit for node line. Lines of this or lower length are joined with previous lines,
+e.g. 'an apple' won't be splitted into two lines 'an' and 'apple' if this var is set to 2 or more."
+  :type 'integer
+  :group 'org-mindmap)
+
 (defcustom org-mindmap-default-wrap-leaves t
   "Default value for leaves wrapping:
 - nil: don't wrap leaf nodes;
@@ -128,7 +134,7 @@ Ensures properties are not sticky to allow editing node text at the boundary."
   (while (< (current-column) col)
     ;; TODO Here we have a surprising side effect, it should probably
     ;; be placed somewhere closer to rendering.
-    (insert (org-mindmap--propertize-text " "))
+    (insert (org-mindmap--propertize-connector " "))
     (move-to-column col)))
 
 ;; Text rendering
@@ -150,6 +156,24 @@ Ensures properties are not sticky to allow editing node text at the boundary."
         (concat (car pair) (cdr pair))
       (concat left " " text " " right))))
 
+(defun org-mindmap--join-short-lines (lines)
+  "Minimal width limit for node line. Lines of this or lower length are joined with previous lines,
+e.g. 'an apple' won't be splitted into two lines 'an' and 'apple' if this var is set to 2 or more."
+  (let ((acc (list (car lines)))
+        (width (string-width (car lines))))
+    (dolist (line (cdr lines))
+      (cond
+       ;; If a new line is very short, join it to the current one.
+       ((<= (string-width (car acc)) org-mindmap-min-width)
+        (setf (car acc) (string-join (list (car acc) line) " "))
+        (setf width (max width (string-width (car acc)))))
+       ;; If we can fit the next line into the box already reserved, do that.
+       ((< (+ (string-width (car acc)) (string-width line)) width)
+        (setf (car acc) (string-join (list (car acc) line) " ")))
+       ;; Otherwise, keep the line.
+       (t (push line acc))))
+    (nreverse acc)))
+
 (defun org-mindmap--node-display-lines (node props)
   "Return a list of lines to represent a NODE, respecting PROPS :max-width and :wrap-leaves options."
   (let* ((text (org-mindmap-parser-node-text node))
@@ -163,8 +187,9 @@ Ensures properties are not sticky to allow editing node text at the boundary."
                      (string-fill text (floor (* (if is-leaf leaves-mult 1) max-width)))
                      "\n")
                   (list text)))
-         (node-box-width (apply #'max (mapcar #'string-width lines)))
-         (padded-lines (mapcar #'(lambda (l) (string-pad l node-box-width nil (eq side 'left))) lines)))
+         (lines-wo-short-words (org-mindmap--join-short-lines lines))
+         (node-box-width (apply #'max (mapcar #'string-width lines-wo-short-words)))
+         (padded-lines (mapcar #'(lambda (l) (string-pad l node-box-width nil (eq side 'left))) lines-wo-short-words)))
     ;; IDEA Put lines both below and above the connector row.
     (if (null (org-mindmap-parser-node-parent node))
         ;; ... append delimiters to the first line of the root node
@@ -648,7 +673,8 @@ Accepts mindmap PROPS."
               (progn
                 (goto-char start)
                 (forward-line (1+ (org-mindmap-parser-node-row target-node)))
-                (move-to-column (org-mindmap-parser-node-col target-node)))
+                (move-to-column (org-mindmap-parser-node-col target-node))
+                (while (looking-at " ") (forward-char)))
             (goto-char start)))
       (goto-char start))))
 

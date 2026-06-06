@@ -243,7 +243,7 @@ or 2 consecutive space, or reach the shift LIMIT."
 in ROW, starting from COL, marking consumed symbols as VISITED."
   (let* ((dx (car dir))
          (chars nil)
-         (col-maybe-shifted (org-mindmap-parser--search-back lines row col 3 dir visited))
+         (col-maybe-shifted (org-mindmap-parser--search-back lines row col 999 dir visited))
          (start-col (org-mindmap-parser--consume-spaces lines row col-maybe-shifted dir visited))
          (curr-col start-col))
     (if (= dx 0)
@@ -417,21 +417,26 @@ VISITED keeps track of visited locations."
     (org-mindmap-parser--join-continuations child-node lines dir visited))
   ;; Pick up wrapped lines of the given node.
   (let* ((side (org-mindmap-parser-node-side node))
+         (text (org-mindmap-parser-node-text node))
          (row (org-mindmap-parser-node-row node))
          (col (org-mindmap-parser-node-col node))
          (start-col (if (eq side 'left)
-                        ;; If a node has side, it must have parent. Only root node has no parent.
-                        (let* ((parent (org-mindmap-parser-node-parent node))
-                               (parent-col (org-mindmap-parser-node-col parent)))
-                          (- parent-col 4))
+                        (+ col (string-width text))
+                      ;; If a node has side, it must have parent. Only root node has no parent.
+                      ;; (let* ((parent (org-mindmap-parser-node-parent node))
+                      ;;        (parent-col (org-mindmap-parser-node-col parent)))
+                      ;;   (- parent-col 4))
                       col))
          (i 1))
     (while (let* ((result (org-mindmap-parser--consume-text lines (+ row i) start-col dir visited))
                   (text (car result))
+                  (leftmost-col (cadr result))
                   (found-text (and text (not (string= text "")))))
              (when found-text
                (setf (org-mindmap-parser-node-text node)
                      (concat (org-mindmap-parser-node-text node) " " text))
+               (when (eq side 'left)
+                 (setf (org-mindmap-parser-node-col node) leftmost-col))
                (setq i (1+ i)))
              found-text))))
 

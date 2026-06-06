@@ -504,7 +504,7 @@ Root2 ╰─ B
             - не в павильонах (row:5, col:93, side:right)
 #+end_expected
 
-* Test Case 23: Multiline Two-Sided, each word on a new line
+* Test Case 24: Multiline Two-Sided, each word on a new line
 #+begin_mindmap :max-width 1
 идея            ─╮                                  ╭─ Журнал 
 авторского       │                     ╭─ Режиссёры ╯  Cahiers
@@ -521,7 +521,7 @@ Root2 ╰─ B
     - New Wave (row:4, col:30, side:nil)
       - Режиссёры (row:1, col:42, side:right)
         - Журнал Cahiers du Cinema (row:0, col:55, side:right)
-      - Франсуа Трюффо (row:4, col:18, side:left)
+      - Франсуа Трюффо (row:4, col:19, side:left)
         - идея авторского (режиссёрского) кино (row:0, col:0, side:left)
         - "Об одной тенденции французского кино" 1954 (row:4, col:3, side:left)
       - Связи (row:6, col:42, side:right)
