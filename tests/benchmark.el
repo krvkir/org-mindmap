@@ -1,3 +1,10 @@
+;;; Results log:
+;;
+;; 2026-06-07:
+;;   Parsing:    5.14 ms
+;;   Layout:     9.82 ms
+;;   Drawing:   12.86 ms
+;;   Total:     27.81 ms
 
 (require 'org-mindmap)
 

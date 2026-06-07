@@ -40,3 +40,30 @@ The system SHALL allow users to define multiple sets of symbols for connectors a
 - WHEN a user attempts to use a forbidden symbol
 - THEN the system SHALL signal an error or prevent the configuration from being applied.
 
+### Requirement: Text Wrapping Configuration
+The system SHALL allow per-block configuration of text wrapping via header properties.
+
+#### Scenario: Setting soft max-width
+- GIVEN a mindmap block
+- WHEN the header property `:max-width` is set to an integer N
+- THEN the renderer SHALL wrap node text at the last space before N columns
+- AND the logical node text SHALL remain unchanged (wrapping is a display-only transformation).
+
+#### Scenario: Automatic max-width
+- GIVEN a mindmap block with `:max-width auto`
+- WHEN the block is rendered
+- THEN the effective max-width SHALL be computed as `floor(window-width / (max-depth * 2 + 1))`
+- AND the computed value SHALL be used for soft word-boundary wrapping.
+
+#### Scenario: Default (no wrapping)
+- GIVEN a mindmap block without an explicit `:max-width` property
+- WHEN the block is rendered
+- THEN no text wrapping SHALL be applied
+- AND all nodes SHALL occupy a single row.
+
+#### Scenario: Leaf wrapping with multiplier
+- GIVEN a mindmap block with `:max-width N` and `:wrap-leaves M` (where M is a float)
+- WHEN the block is rendered
+- THEN leaf nodes (nodes with no children) SHALL be wrapped at `N * M` columns
+- AND non-leaf nodes SHALL be wrapped at `N` columns.
+
