@@ -265,7 +265,7 @@ Return (width height . lines) cons cell."
             (cached (gethash side node-cache)))
       cached
     (let ((descendants (cl-loop for child in (org-mindmap--side-children node side)
-                                 append (cons child (org-mindmap--side-descendants child side)))))
+                                append (cons child (org-mindmap--side-descendants child side)))))
       (when org-mindmap--side-descendants-cache
         (let ((node-cache (or (gethash node org-mindmap--side-descendants-cache)
                               (puthash node (make-hash-table :test 'eq) org-mindmap--side-descendants-cache))))
@@ -290,25 +290,7 @@ including its horizontal connector from parent, respecting MAX-WIDTH and WRAP-LE
          (end-col (if (eq side 'left) (if parent parent-col (+ col len)) (+ col len spacing))))
     (cl-loop for i below num-lines collect (list (+ row i) start-col end-col))))
 
-(defun org-mindmap--get-occupied-rows (nodes props)
-  "Return a list of (row start-col end-col) for all NODES.
-This also includes their vertical connectors and respects SPACING."
-  (cl-loop for node in nodes append
-           (let ((len (car (org-mindmap--node-box node props)))
-                 (col (org-mindmap-parser-node-col node))
-                 (row (org-mindmap-parser-node-row node)))
-             (append
-              ;; Add the node itself (including its horizontal connector from parent)
-              (org-mindmap--node-occupancy node props)
-              ;; Add the vertical connector for its children
-              (cl-loop for side in (list 'left 'right) append
-                       (when-let* ((children (org-mindmap--side-children node side))
-                                   (conn-c (if (= len 0) col (if (eq side 'left) (- col 2) (+ col len 1))))
-                                   (first-r (org-mindmap-parser-node-row (car children)))
-                                   (last-r (org-mindmap-parser-node-row (car (last children)))))
-                         (cl-loop for r from first-r to last-r collect (list r conn-c (1+ conn-c)))))))))
-
-;; Tree compaction helpsers
+;; Tree compaction helpers
 (defun org-mindmap--check-overlap-subtree (rel-occ base-row delta occupied-map)
   "Check if shifting rel-occ by base-row + delta overlaps with occupied-map."
   (cl-loop for (rel-row start-col end-col) in rel-occ
@@ -317,10 +299,6 @@ This also includes their vertical connectors and respects SPACING."
              (cl-loop for (occ-start . occ-end) in (gethash r occupied-map)
                       thereis (not (or (<= end-col occ-start) (>= start-col occ-end)))))))
 
-(defun org-mindmap--update-occupied-map (occupied-map nodes props)
-  "Update occupied cells OCCUPIED-MAP from NODES locations using SPACING."
-  (dolist (occ (org-mindmap--get-occupied-rows nodes props))
-    (push (cons (nth 1 occ) (nth 2 occ)) (gethash (nth 0 occ) occupied-map))))
 
 (defvar org-mindmap--subtree-occ-cache nil
   "Dynamic cache for subtree occupancy lists.")
@@ -489,7 +467,9 @@ Requires starting COL and map PROPS."
 
 (defun org-mindmap-build-tree-layout (roots props)
   "Assign row and col to all nodes in ROOTS using map PROPS."
-  (let ((occupied-map (make-hash-table :test 'eq))
+  (let ((gc-cons-threshold most-positive-fixnum)
+        (gc-cons-percentage 0.9)
+        (occupied-map (make-hash-table :test 'eq))
         (org-mindmap--subtree-occ-cache (make-hash-table :test 'eq))
         (org-mindmap--side-children-cache (make-hash-table :test 'eq))
         (org-mindmap--side-descendants-cache (make-hash-table :test 'eq))
@@ -528,7 +508,9 @@ HAS-ABOVE, HAS-BELOW, HAS-LEFT, HAS-RIGHT are booleans."
 
 (defun org-mindmap-draw-subtree (node props)
   "Write NODE node-text and box-drawing connectors onto the buffer canvas."
-  (let* ((node-row (org-mindmap-parser-node-row node))
+  (let* ((gc-cons-threshold most-positive-fixnum)
+         (gc-cons-percentage 0.9)
+         (node-row (org-mindmap-parser-node-row node))
          (node-col (org-mindmap-parser-node-col node))
          (box (org-mindmap--node-box node props))
          (node-len (car box))
@@ -698,7 +680,9 @@ Handles legacy migration of :layout left/compact/centered."
 
 (defun org-mindmap--get-state ()
   "Parse current region, return (start end props roots target-node)."
-  (let ((region (org-mindmap-parser-get-region)))
+  (let ((gc-cons-threshold most-positive-fixnum)
+        (gc-cons-percentage 0.9)
+        (region (org-mindmap-parser-get-region)))
     (unless region (error "Not inside a mindmap region"))
     (let* ((start (car region))
            (end (cdr region))
