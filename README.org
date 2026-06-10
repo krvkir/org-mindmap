@@ -193,10 +193,25 @@ The =:wrap-leaves= property can also be a float multiplier, e.g. 1.5 gives leaf 
 
 Wrapping is purely visual: the logical node text stays unchanged (newlines replace spaces when rendering, spaces replace newlines when parsing).
 
-* Fonts
-I've tested the package with =Hack= font, and things seem to work fine.
+* Fonts and Visuals
+You may customize the fonts used for the map (see =M-x customize-group org-mindmap=), but make sure the font is monospace, otherwise the map will be misaligned. I've tested the package with =Hack= font, and things seem to work fine.
 
 Some fonts declare double size for symbols which are used as root node markers by default. You may either change your font or change default symbols for the root node (make sure those symbols are not ones used to draw map connectors and will not occur in your map nodes as text).
+
+** Gaps in vertical lines
+The package tries to eleminate those gaps, so if you see gaps between vertical connectors on adjacent lines, there could be those culprits:
+1. You have a package or mode that additionally propertizes text in your org buffer, e.g. =org-indent=. Try disabling it and see what happens.
+2. Your lines include characters higher than the regular ones. I saw that with CJK glyphs.
+
+Other packages dealing with unicode, like =uniline=, encounter the same problem. Even Org tables have those gaps. Unfortunately, it doesn't seem that Emacs has facilities to patch those gaps as modern terminals do.
+
+** Chinese, Japanese, Korean
+I did my best to support CJK characters, though I speak no Chinese, Japanese or Korean and can't really test it. If you find bugs, please report.
+
+You'll need a font which sets width for those characters to be exactly double of the regular characters, otherwise your map will be visually crumpled, vertical connectors will not align. I've tested =Noto Sans Mono CJK SC= and it seems to work fine.
+
+** Right-to-Left
+Left-to-right languages are not supported yet.
 
 * Examples
 Here's one more complex example mindmap for a chapter from Sönke Ahrens — How to Take Smart Notes.

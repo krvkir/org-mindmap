@@ -1,4 +1,4 @@
-;;; Results log:
+;;; Results log:  -*- lexical-binding: t; -*-
 ;;
 ;; 2026-06-07:
 ;;   Parsing:    5.14 ms

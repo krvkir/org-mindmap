@@ -107,7 +107,8 @@ Ensures properties are not sticky to allow editing node text at the boundary."
   (let ((props (list 'face 'org-mindmap-face-connectors
                      'font-lock-face 'org-mindmap-face-connectors
                      'rear-nonsticky '(read-only face font-lock-face)
-                     'front-sticky '(read-only face font-lock-face))))
+                     'front-sticky '(read-only face font-lock-face)
+                     'line-height t)))
     (when org-mindmap-protect-connectors
       (setq props (plist-put props 'read-only t)))
     (apply #'propertize str props)))
@@ -116,7 +117,8 @@ Ensures properties are not sticky to allow editing node text at the boundary."
   "Apply text face to STR."
   (propertize str
               'face 'org-mindmap-face-text
-              'font-lock-face 'org-mindmap-face-text))
+              'font-lock-face 'org-mindmap-face-text
+              'line-height t))
 
 (defun org-mindmap--string-pad-width (string length &optional padding start)
   "Pad STRING to visual column LENGTH using PADDING (character).
