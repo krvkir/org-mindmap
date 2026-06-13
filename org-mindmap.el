@@ -101,24 +101,90 @@ For example, if :max-width is 10 and :wrap-leaves is 1.5, leaf nodes soft max wi
   "Face for node text."
   :group 'org-mindmap)
 
-(defun org-mindmap--propertize-connector (str)
+(defcustom org-mindmap-default-paint-depth nil
+  "Default depth from which to paint subtrees."
+  :type 'integer
+  :group 'org-mindmap)
+
+(defvar org-mindmap-color-palette
+  ;; just RGB
+  ;; '("blue" "green" "red")
+  (mapcar
+   #'face-foreground
+   ;;  ;; rainbow-delimiters
+   ;;  ;; '(rainbow-delimiters-depth-1-face
+   ;;  ;;   rainbow-delimiters-depth-2-face
+   ;;  ;;   rainbow-delimiters-depth-3-face
+   ;;  ;;   rainbow-delimiters-depth-4-face
+   ;;  ;;   rainbow-delimiters-depth-5-face
+   ;;  ;;   rainbow-delimiters-depth-6-face
+   ;;  ;;   rainbow-delimiters-depth-7-face
+   ;;  ;;   rainbow-delimiters-depth-8-face
+   ;;  ;;   rainbow-delimiters-depth-9-face)
+   ;; font lock colors, should be fine for any theme
+   '(font-lock-keyword-face
+     font-lock-function-name-face
+     font-lock-string-face
+     font-lock-type-face
+     font-lock-constant-face
+     font-lock-builtin-face
+     font-lock-warning-face
+     font-lock-variable-name-face
+     font-lock-number-face))
+  "List of colors to paint subtrees in.")
+
+(defcustom org-mindmap-paint-tinge-fg 0.8
+  "Ratio of colorization for face foreground color."
+  :type 'float
+  :group 'org-mindmap)
+
+(defcustom org-mindmap-paint-tinge-bg 0.2
+  "Ratio of colorization for face background color."
+  :type 'float
+  :group 'org-mindmap)
+
+(defun org-mindmap--tinge-fg (face color)
+  "Tinge FACE's background color with COLOR."
+  (apply #'color-rgb-to-hex
+         (color-blend
+          (color-name-to-rgb (or color "black"))
+          (color-name-to-rgb (or (face-foreground face nil t) "black"))
+          org-mindmap-paint-tinge-fg)))
+
+(defun org-mindmap--tinge-bg (face color)
+  "Tinge FACE's background color with COLOR."
+  (apply #'color-rgb-to-hex
+         (color-blend
+          (color-name-to-rgb (or color "black"))
+          (color-name-to-rgb (or (face-background face nil t) "black"))
+          org-mindmap-paint-tinge-bg)))
+
+(defun org-mindmap--propertize-connector (str &optional color)
   "Apply face and optional read-only properties to connector STR.
 Ensures properties are not sticky to allow editing node text at the boundary."
-  (let ((props (list 'face 'org-mindmap-face-connectors
-                     'font-lock-face 'org-mindmap-face-connectors
-                     'rear-nonsticky '(read-only face font-lock-face)
-                     'front-sticky '(read-only face font-lock-face)
-                     'line-height t)))
+  (let* ((face (if color
+                   (list (list :foreground (org-mindmap--tinge-fg 'org-mindmap-face-connectors color))
+                         'org-mindmap-face-connectors)
+                 'org-mindmap-face-connectors))
+         (props (list 'face face
+                      'font-lock-face face
+                      ;; 'rear-nonsticky '(read-only face font-lock-face)
+                      ;; 'front-sticky '(read-only face font-lock-face)
+                      'line-height t)))
     (when org-mindmap-protect-connectors
       (setq props (plist-put props 'read-only t)))
     (apply #'propertize str props)))
 
-(defun org-mindmap--propertize-text (str)
+(defun org-mindmap--propertize-text (str &optional color)
   "Apply text face to STR."
-  (propertize str
-              'face 'org-mindmap-face-text
-              'font-lock-face 'org-mindmap-face-text
-              'line-height t))
+  (let ((face (if color
+                  (list (list :background (org-mindmap--tinge-bg 'org-mindmap-face-text color))
+                        'org-mindmap-face-text)
+                'org-mindmap-face-text)))
+    (propertize str
+                'face face
+                'font-lock-face face
+                'line-height t)))
 
 (defun org-mindmap--string-pad-width (string length &optional padding start)
   "Pad STRING to visual column LENGTH using PADDING (character).
@@ -506,20 +572,21 @@ HAS-ABOVE, HAS-BELOW, HAS-LEFT, HAS-RIGHT are booleans."
      ((and (not has-above) (not has-below) has-left has-right) (char-to-string (nth 0 pack))) ; ─
      (t (char-to-string (nth 1 pack))))))
 
-(defun org-mindmap-draw-subtree (node props)
+(defun org-mindmap-draw-subtree (node props &optional color)
   "Write NODE node-text and box-drawing connectors onto the buffer canvas."
   (let* ((node-row (org-mindmap-parser-node-row node))
          (node-col (org-mindmap-parser-node-col node))
          (box (org-mindmap--node-box node props))
          (node-len (car box))
-         (node-lines (cddr box)))
+         (node-lines (cddr box))
+         (depth (org-mindmap-parser-node-depth node)))
     ;; Insert the node text.
     (cl-loop for i below (length node-lines) do
              (org-mindmap--move-to (+ node-row i) node-col)
              (let ((start (point)))
                (move-to-column (+ node-col node-len))
                (delete-region start (point)))
-             (insert (org-mindmap--propertize-text (nth i node-lines))))
+             (insert (org-mindmap--propertize-text (nth i node-lines) color)))
     ;; Draw children:
     (dolist (side (list 'left 'right))
       (when-let* ((children (org-mindmap--side-children node side))
@@ -542,27 +609,34 @@ HAS-ABOVE, HAS-BELOW, HAS-LEFT, HAS-RIGHT are booleans."
                           (let ((start (point)))
                             (move-to-column (+ (1- conn-col) 2))
                             (delete-region start (point)))
-                          (insert (org-mindmap--propertize-connector conn-str)))
+                          (insert (org-mindmap--propertize-connector conn-str color)))
                          ((and (eq side 'right) has-right)
                           (org-mindmap--move-to row conn-col)
                           (let ((start (point)))
                             (move-to-column (+ conn-col 2))
                             (delete-region start (point)))
-                          (insert (org-mindmap--propertize-connector conn-str)))
+                          (insert (org-mindmap--propertize-connector conn-str color)))
                          (t
                           (org-mindmap--move-to row conn-col)
                           (let ((start (point)))
                             (move-to-column (+ conn-col 1))
                             (delete-region start (point)))
-                          (insert (org-mindmap--propertize-connector sym)))))
+                          (insert (org-mindmap--propertize-connector sym color)))))
                  ;; Fontify empty space to the right so that connector face background,
                  ;; if set non-standard, is applied to the whole map rectangle.
                  ;; TODO this works subpar with line wrapping, which is on in org buffers
                  ;; most of the time.
                  ;; (org-mindmap--move-to row (- (window-width) 2))
                  )
-        (dolist (child children)
-          (org-mindmap-draw-subtree child props))))))
+        (let ((depth (or (org-mindmap-parser-node-depth node) 0))
+              (paint-depth (plist-get props :paint-depth)))
+          (cl-loop for child in children
+                   and i below (length children)
+                   and child-color = (if (and paint-depth (= depth paint-depth))
+                                         (nth (mod i (length org-mindmap-color-palette))
+                                              org-mindmap-color-palette)
+                                       color)
+                   do (org-mindmap-draw-subtree child props child-color)))))))
 
 (defun org-mindmap-render-tree (roots &optional props)
   "Render ROOTS evaluating the specified :layout geometry and :spacing from map PROPS.
@@ -573,8 +647,8 @@ If :compacted is non-nil, nodes fill vacant vertical spaces."
     (with-temp-buffer
       (setq indent-tabs-mode nil)
       (let ((inhibit-read-only t))
-        (dolist (root roots)
-          (org-mindmap-draw-subtree root props)))
+        (cl-loop for root in roots
+                 do (org-mindmap-draw-subtree root props nil)))
       (buffer-string))))
 
 ;;
@@ -638,6 +712,12 @@ Handles legacy migration of :layout left/compact/centered."
                          (if (plist-member props :compacted)
                              (plist-get props :compacted)
                            org-mindmap-default-compacted)))
+  (setq props (plist-put props :paint-depth
+                         (if (plist-member props :paint-depth)
+                             (pcase (plist-get props :paint-depth)
+                               ("nil" nil)
+                               (_ (string-to-number (plist-get props :paint-depth))))
+                           org-mindmap-default-paint-depth)))
   (setq props (plist-put props :max-width
                          (let ((val
                                 (if (plist-member props :max-width)
@@ -647,7 +727,7 @@ Handles legacy migration of :layout left/compact/centered."
                                       (_ (string-to-number (plist-get props :max-width))))
                                   org-mindmap-default-max-width)))
                            (if (eq val 'auto)
-                               (when roots 
+                               (when roots
                                  (org-mindmap--calculate-max-width roots))
                              val))))
   (setq props (plist-put props :wrap-leaves

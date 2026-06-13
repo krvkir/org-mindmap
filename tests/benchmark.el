@@ -54,5 +54,5 @@
       (message "  Drawing: %7.2f ms" t-draw)
       (message "  Total:   %7.2f ms" (+ t-parse t-layout t-draw)))))
 
-(benchmark-map-12 "big-map.org")
-(benchmark-map-12 "medium-map.org")
+(benchmark-map-12 "tests/big-map.org")
+(benchmark-map-12 "tests/medium-map.org")
