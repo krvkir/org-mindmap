@@ -65,7 +65,11 @@
     (insert-file-contents "big-map.org")
     (goto-char (point-min))
     (re-search-forward "^#\\+begin_mindmap")
-    (let* ((region (org-mindmap-parser-get-region))
+    (let* (;; emulate interactive usage
+           (gc-cons-threshold 800000)
+           (gc-cons-percentage 0.1)
+           ;; 
+           (region (org-mindmap-parser-get-region))
            (start (car region))
            (end (cdr region))
            (roots nil)

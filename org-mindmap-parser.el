@@ -89,17 +89,23 @@ Use symbols you don't directly type, such as unicode plotting characters."
 (defvar org-mindmap-parser--debug-accumulator nil
   "Accumulator for debug messages during a single parsing/updating run.")
 
+(defvar org-mindmap-parser--debug-start-time nil
+  "The time of the first debug message in the current series.")
+
 (defun org-mindmap-parser--log-message (fmt args)
   "Log formatted FMT with ARGS to the debug buffer, or accumulate if batching."
-  (if (bound-and-true-p org-mindmap-parser--debug-accumulator)
-      (push (cons fmt args) org-mindmap-parser--debug-accumulator)
+  (if (and ;; (bound-and-true-p org-mindmap-parser--debug-accumulator)
+       (bound-and-true-p org-mindmap-parser--debug-start-time))
+      (push (cons (concat "%f | " fmt)
+                  (cons (- (float-time) org-mindmap-parser--debug-start-time) args))
+            org-mindmap-parser--debug-accumulator)
     (let ((buf (get-buffer-create "*org-mindmap-debug*"))
-          (msg (apply #'format fmt args)))
+          (msg (apply #'format (concat "%f | " fmt) (cons (float-time) args))))
       (with-current-buffer buf
         (setq buffer-undo-list t)
         (save-excursion
           (goto-char (point-max))
-          (insert msg "\n"))))))
+          (insert msg "\n")))))) 
 
 (defmacro org-mindmap-parser--debug (fmt &rest args)
   "Log debug messages to the dedicated trace buffer.
@@ -110,12 +116,15 @@ If `org-mindmap-parser-debug' is t, format FMT with ARGS."
 (defmacro org-mindmap-parser-with-debug-batch (&rest body)
   "Run BODY with debug messages batched and written to the log buffer at the end."
   (declare (indent 0))
-  `(let ((gc-cons-threshold most-positive-fixnum)
-         (gc-cons-percentage 0.9)
-         (org-mindmap-parser--debug-accumulator nil))
-     (garbage-collect)
+  `(let (;; (gc-cons-threshold most-positive-fixnum)
+         ;; (gc-cons-percentage 0.9)
+         (org-mindmap-parser--debug-accumulator nil)
+         (org-mindmap-parser--debug-start-time (float-time)))
+     (org-mindmap-parser--debug "Debug accumulator opened at %f" org-mindmap-parser--debug-start-time)
+     ;; (garbage-collect)
      (unwind-protect
          (progn ,@body)
+       (org-mindmap-parser--debug "Debug accumulator closed at %f" (float-time))
        (when (and org-mindmap-parser-debug org-mindmap-parser--debug-accumulator)
          (let ((buf (get-buffer-create "*org-mindmap-debug*"))
                (msgs (mapcar (lambda (x) (apply #'format (car x) (cdr x)))
@@ -327,7 +336,7 @@ Starts from ROW and COL.  VISITED marks the consumed cells."
       (let* (char)
         (while (and (setq char (org-mindmap-parser--grid-get lines row curr-col))
                     (org-mindmap-parser--is-whitespace char))
-          (org-mindmap-parser--mark-visited row curr-col visited)
+          ;; (org-mindmap-parser--mark-visited row curr-col visited)
           (setq curr-col (+ curr-col dx)))
         (when (not (= col curr-col))
           (org-mindmap-parser--debug "... consumed spaces from (%d, %d) to (%d, %d)" row col row curr-col))
@@ -501,6 +510,7 @@ VISITED keeps track of visited locations."
 
 (defun org-mindmap-parser-get-region ()
   "Detect #+begin_mindmap and #+end_mindmap boundaries around point."
+  (org-mindmap-parser--debug "Searching current region...")
   (save-excursion
     (let ((orig (point))
           start end)
@@ -510,6 +520,7 @@ VISITED keeps track of visited locations."
         (when (re-search-forward "^[ \t]*#\\+end_mindmap\\b" nil t)
           (setq end (line-end-position))
           (when (and (<= start orig) (<= orig end))
+            (org-mindmap-parser--debug "Found region %d - %d..." start end)
             (cons start end)))))))
 
 (defun org-mindmap-parser-region-active-p ()

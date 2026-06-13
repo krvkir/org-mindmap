@@ -640,8 +640,9 @@ Handles legacy migration of :layout left/compact/centered."
                                       ("auto" 'auto)
                                       (_ (string-to-number (plist-get props :max-width))))
                                   org-mindmap-default-max-width)))
-                           (if (and roots (eq val 'auto))
-                               (org-mindmap--calculate-max-width roots)
+                           (if (eq val 'auto)
+                               (when roots 
+                                 (org-mindmap--calculate-max-width roots))
                              val))))
   (setq props (plist-put props :wrap-leaves
                          (if (plist-member props :wrap-leaves)
@@ -807,6 +808,7 @@ Accepts mindmap PROPS."
   "Align and format the current mindmap region based on block properties."
   (interactive)
   (org-mindmap-parser-with-debug-batch
+    (org-mindmap-parser--debug "Start aligning...")
     (cl-destructuring-bind (start end props roots target-node) (org-mindmap--get-state)
       (org-mindmap--update-buffer start end roots target-node props))))
 

@@ -8,11 +8,11 @@
 
 (require 'org-mindmap)
 
-(defun benchmark-map-12 ()
+(defun benchmark-map-12 (path)
   (with-temp-buffer
     (org-mode)
     (setq indent-tabs-mode nil)
-    (insert-file-contents "big-map.org")
+    (insert-file-contents path)
     (goto-char (point-min))
     (re-search-forward "^#\\+begin_mindmap")
     (let* (;; emulate interactive usage
@@ -48,10 +48,11 @@
               (org-mindmap-draw-subtree root props))))
         (setq t-draw (* 1000 (- (float-time) st))))
 
-      (message "BENCHMARK RESULTS (Test Case 12):")
+      (message "BENCHMARK RESULTS (%s):" path)
       (message "  Parsing: %7.2f ms" t-parse)
       (message "  Layout:  %7.2f ms" t-layout)
       (message "  Drawing: %7.2f ms" t-draw)
       (message "  Total:   %7.2f ms" (+ t-parse t-layout t-draw)))))
 
-(benchmark-map-12)
+(benchmark-map-12 "big-map.org")
+(benchmark-map-12 "medium-map.org")
