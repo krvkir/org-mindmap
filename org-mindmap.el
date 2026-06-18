@@ -1482,6 +1482,7 @@ nodes of that side."
     (define-key map (kbd "RET") #'org-mindmap-return)
     map))
 
+;;;###autoload
 (define-minor-mode org-mindmap-mode
   "Editable mindmap visualization within `org-mode'."
   :lighter " ⅄"
