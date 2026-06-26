@@ -1474,8 +1474,8 @@ nodes of that side."
       (let ((node (org-mindmap-find-node-at-point)))
         (if node
             (org-mindmap-insert-sibling)
-          (org-return)))
-    (org-return)))
+          (call-interactively #'org-return)))
+    (call-interactively #'org-return)))
 
 (defvar org-mindmap-mode-map
   (let ((map (make-sparse-keymap)))
